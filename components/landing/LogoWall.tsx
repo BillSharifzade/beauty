@@ -3,12 +3,16 @@ import { asset } from "@/lib/asset";
 /**
  * The partner brands, as they draw themselves.
  *
- * These are the brands' own tiles, vendored under
- * public/brand/logos so the page depends on nothing but the checkout. The
- * wall is logos and nothing else: no country, no category, no count under
- * each one. The row scrolls once, slowly, because the point is breadth; the
- * second copy exists only so the loop has no seam, and it is hidden from
- * assistive technology and from anyone who asked for less motion.
+ * These are the brands' own tiles, vendored under public/brand/logos so the
+ * page depends on nothing but the checkout. The wall is logos and nothing
+ * else: no country, no category, no count under each one.
+ *
+ * The row drifts once, slowly, because the point is breadth. Two identical
+ * runs sit side by side and the track slides by exactly one run, so the loop
+ * has no seam; the second run is hidden from assistive technology and from
+ * anyone who asked for less motion. The tiles load eagerly on purpose: a
+ * lazy image in a moving row arrives late and changes the row's width under
+ * the animation, which reads as a stutter.
  */
 
 const brands = [
@@ -35,30 +39,29 @@ const brands = [
 ];
 
 export function LogoWall() {
-  const row = (dup: boolean) =>
-    brands.map((b) => (
-      <li
-        key={`${b.slug}${dup ? "-dup" : ""}`}
-        className={dup ? "lp-logo lp-logo--dup" : "lp-logo"}
-        aria-hidden={dup || undefined}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={asset(`/brand/logos/${b.slug}.webp`)}
-          alt={dup ? "" : b.name}
-          height={36}
-          loading="lazy"
-          decoding="async"
-        />
-      </li>
-    ));
+  const run = (dup: boolean) => (
+    <ul className={dup ? "lp-marquee-run lp-marquee-run--dup" : "lp-marquee-run"} aria-hidden={dup || undefined}>
+      {brands.map((b) => (
+        <li key={b.slug} className="lp-logo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={asset(`/brand/logos/${b.slug}.webp`)}
+            alt={dup ? "" : b.name}
+            height={36}
+            loading="eager"
+            decoding="async"
+          />
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <div className="lp-marquee">
-      <ul className="lp-marquee-track">
-        {row(false)}
-        {row(true)}
-      </ul>
+      <div className="lp-marquee-track">
+        {run(false)}
+        {run(true)}
+      </div>
     </div>
   );
 }

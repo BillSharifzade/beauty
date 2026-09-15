@@ -956,17 +956,25 @@ html.is-loading .lp-nav {
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
 
+/* Two runs, one slide of exactly one run's width: no seam at the loop. */
 .lp-marquee-track {
+  --lp-marquee-gap: clamp(2.5rem, 5vw, 4.5rem);
   display: flex;
-  align-items: center;
-  gap: clamp(2.5rem, 5vw, 4.5rem);
   width: max-content;
-  padding-left: clamp(2.5rem, 5vw, 4.5rem);
+  will-change: transform;
   animation: lp-drift 60s linear infinite;
 }
 
 .lp-marquee:hover .lp-marquee-track {
   animation-play-state: paused;
+}
+
+.lp-marquee-run {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--lp-marquee-gap);
+  padding-right: var(--lp-marquee-gap);
 }
 
 @keyframes lp-drift {
@@ -992,6 +1000,11 @@ html.is-loading .lp-nav {
   filter: grayscale(1);
   mix-blend-mode: multiply;
   opacity: 0.8;
+  transition: opacity var(--normal) var(--ease);
+}
+
+.lp-logo:hover img {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1003,13 +1016,16 @@ html.is-loading .lp-nav {
   .lp-marquee-track {
     animation: none;
     width: auto;
+  }
+
+  .lp-marquee-run {
     flex-wrap: wrap;
     justify-content: center;
     row-gap: var(--space-5);
     padding: 0 var(--lp-gutter);
   }
 
-  .lp-logo--dup {
+  .lp-marquee-run--dup {
     display: none;
   }
 }
