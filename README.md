@@ -33,20 +33,22 @@ build with `BASE_PATH=""` for a root-hosted copy.
 | `app/page.tsx` | the page and all of its copy |
 | `app/landing.css`, `app/product.css` | the page's styles and the hero's |
 | `components/product/` | the 3D hero, see its own README |
-| `components/landing/` | reveal-on-scroll, nav spy, the logo wall |
+| `components/collection/` | the live 3D product cards: one canvas, one view per card |
+| `components/landing/` | preloader, reveal-on-scroll, word reveals, counters, nav spy, the logo wall |
 | `public/brand/` | mark, icons, poster, product stills, partner logos |
 
-## Rendering the stills
+## Rendering the poster and the OpenGraph image
 
-The product cards, the no-WebGL poster and the OpenGraph image are renders of
-the same 3D scene, taken with `scripts/stills.mjs` from a running dev server:
+The no-WebGL poster and the OpenGraph image are renders of the same 3D
+scene, taken with `scripts/stills.mjs` from a running dev server:
 
 ```sh
 npm run dev
-node scripts/stills.mjs      # writes public/brand/stills/*.webp, poster.webp, og.png
+node scripts/stills.mjs      # writes public/brand/poster.webp and og.png
 ```
 
-The script drives Google Chrome headless through `puppeteer-core` (installed
-on demand into `scripts/`), opening the page with `?still=<product|lineup>`,
-which the hero section reads to render one authored frame with the chrome
-hidden.
+The script drives Google Chrome headless through `puppeteer-core` (a dev
+dependency), opening the page with `?still=lineup`, which the hero section
+reads to render one authored frame with the chrome hidden. The product cards
+need no stills: they are live views drawn by one shared canvas
+(`components/collection/`).

@@ -151,3 +151,19 @@ export function StudioLights({
     </>
   );
 }
+
+/**
+ * The lights of a product card: the same studio as the hero without the
+ * animated rim and accent, since a card has no sequence to light. No shadow
+ * maps either; the contact shadow grounds the product on its own.
+ */
+export function CardLights({ dark }: { dark: boolean }) {
+  return (
+    <>
+      <ambientLight intensity={dark ? 0.1 : 0.16} />
+      <directionalLight position={[-3.2, 3.4, 3.6]} intensity={dark ? 2.2 : 1.9} color="#ffffff" />
+      <directionalLight position={[3.6, 0.8, 2.4]} intensity={0.55} color="#dde4f0" />
+      <spotLight position={[-2.6, 2.2, -3.2]} angle={0.7} penumbra={0.9} intensity={dark ? 3 : 1.6} distance={14} color="#ffffff" />
+    </>
+  );
+}

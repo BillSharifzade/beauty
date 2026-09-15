@@ -7,7 +7,7 @@ the scroll progress from 0 to 1.
 
 ```
 components/product/
-  ProductScrollSection.tsx  the section: pin, loader, fallbacks, still mode
+  ProductScrollSection.tsx  the section: pin, fallbacks, still mode, readiness
   ProductScene.tsx          <Canvas> and the rig (the only useFrame)
   Collection.tsx            the five products under their named groups
   Copy.tsx                  the opening statement, captions, the close
@@ -28,7 +28,11 @@ components/product/
     Cream.tsx … Pencil.tsx  the products, each a list of parts and finishes
 ```
 
-Styles are in `app/product.css`.
+Styles are in `app/product.css`. The studio follows the theme through the
+`--studio-*` tokens in `app/globals.css`: a white room by day, a black one by
+night. The page's preloader (`components/landing/Preloader.tsx`) covers the
+page until the section dispatches `lp:hero-ready`, which it does once frames
+are reaching the screen; the collection's canvas waits for the same event.
 
 ## How the sequence is built
 
@@ -73,10 +77,12 @@ a caption in `Copy.tsx`, and a card on the page.
 | No WebGL | no canvas at all; `public/brand/poster.webp` and the same copy |
 | No JavaScript | the server-rendered heading and copy over the poster |
 | No 2D context for textures | labels and the mark are skipped, the products remain |
+| Scene never reports ready | the preloader lifts on its own after twelve seconds |
 
 ## Stills
 
 `?still=cream|tint|shampoo|mascara|pencil|lineup` renders one authored frame
 with the page chrome hidden (`?copy=1` keeps the closing copy, for the
-OpenGraph image). `scripts/stills.mjs` at the repository root drives this
-through headless Chrome and writes the files under `public/brand`.
+OpenGraph image), and `?p=0.42` holds the sequence at one progress value for
+tuning. `scripts/stills.mjs` at the repository root renders the poster and
+the OpenGraph image through headless Chrome.

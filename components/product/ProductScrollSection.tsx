@@ -8,6 +8,7 @@ import { useIsCompact, useMounted, useReducedMotion, useWebGLSupport } from "./h
 import type { StillView } from "./ProductScene";
 import { attachScrollTimeline, createProgressStore } from "./ScrollController";
 import { asset } from "@/lib/asset";
+import { useResolvedTheme } from "@/lib/theme";
 
 /**
  * The hero: a pinned segment in which the collection assembles itself.
@@ -23,7 +24,8 @@ import { asset } from "@/lib/asset";
  * its own chunk after the page is readable. The section's own markup — the
  * heading, the captions, the close — is server-rendered like the rest of the
  * page, which is why the hooks above answer after mount rather than during
- * render.
+ * render. The page's preloader waits on this section: it announces itself
+ * on `lp:hero-ready` once frames are actually reaching the screen.
  *
  * Four ways to render it, and the section picks one before it draws anything:
  *
@@ -48,9 +50,6 @@ const SCROLL_LENGTH = 9;
  *  wheel, not so much that the products lag behind the hand. */
 const SCRUB = 0.8;
 
-/** Height of the page's sticky bar, plus a little, in CSS pixels. */
-const NAV_BAND_PX = 76;
-
 const STILL_VIEWS = new Set<string>(["cream", "tint", "shampoo", "mascara", "pencil", "lineup"]);
 
 export function ProductScrollSection() {
@@ -58,11 +57,10 @@ export function ProductScrollSection() {
   const reduced = useReducedMotion();
   const compact = useIsCompact();
   const webgl = useWebGLSupport();
+  const dark = useResolvedTheme() === "dark";
 
   const sectionRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
-  const lineRef = useRef<HTMLDivElement>(null);
-  const numberRef = useRef<HTMLSpanElement>(null);
 
   const [stillView, setStillView] = useState<StillView | null>(null);
   const [fixed, setFixed] = useState<number | null>(null);
@@ -83,8 +81,16 @@ export function ProductScrollSection() {
   const store = useMemo(() => createProgressStore(animated ? 0 : 1), [animated]);
 
   const [ready, setReady] = useState(false);
-  const [revealed, setRevealed] = useState(false);
-  const onReady = useCallback(() => setReady(true), []);
+  const onReady = useCallback(() => {
+    setReady(true);
+    window.__lpHeroReady = true;
+    window.dispatchEvent(new Event("lp:hero-ready"));
+  }, []);
+
+  // With no WebGL there is nothing to wait for: the poster is the hero.
+  useEffect(() => {
+    if (webgl === false) onReady();
+  }, [webgl, onReady]);
 
   /* The render loop only runs while the section is on screen. Nine screens
    * of pin spacing keep the section's box in the document long after the
@@ -102,39 +108,6 @@ export function ProductScrollSection() {
     return () => observer.disconnect();
   }, []);
 
-  /* The page's bar is glass, and glass over a black studio in the light theme
-   * is a grey stripe across the top of the shot. While this section is the
-   * thing under the bar, the bar switches to its dark treatment. An observer
-   * over a band the height of the bar rather than a scroll listener. */
-  useEffect(() => {
-    const section = sectionRef.current;
-    const nav = document.querySelector(".lp-nav");
-    if (!section || !nav) return undefined;
-
-    let observer: IntersectionObserver | null = null;
-
-    const watch = () => {
-      observer?.disconnect();
-      const below = Math.max(0, window.innerHeight - NAV_BAND_PX);
-      observer = new IntersectionObserver(
-        (entries) => {
-          const entry = entries[0];
-          if (entry) nav.toggleAttribute("data-over-dark", entry.isIntersecting);
-        },
-        { rootMargin: `0px 0px -${below}px 0px` },
-      );
-      observer.observe(section);
-    };
-
-    watch();
-    window.addEventListener("resize", watch);
-    return () => {
-      window.removeEventListener("resize", watch);
-      observer?.disconnect();
-      nav.removeAttribute("data-over-dark");
-    };
-  }, []);
-
   useEffect(() => {
     if (!animated) return undefined;
     const section = sectionRef.current;
@@ -142,28 +115,6 @@ export function ProductScrollSection() {
     if (!section || !pin) return undefined;
     return attachScrollTimeline({ trigger: section, pin, store, length: SCROLL_LENGTH, scrub: SCRUB });
   }, [animated, store]);
-
-  /* The loading line. It creeps to 93% on its own and only completes when
-   * frames are actually reaching the screen, so it is a real signal about a
-   * real wait rather than a decoration that always takes the same second. */
-  useEffect(() => {
-    if (!mounted || webgl === false) return undefined;
-    let value = 0;
-    let frame = 0;
-    const tick = () => {
-      const target = ready ? 100 : 93;
-      value += (target - value) * 0.07;
-      if (lineRef.current) lineRef.current.style.transform = `scaleX(${value / 100})`;
-      if (numberRef.current) numberRef.current.textContent = String(Math.round(value));
-      if (ready && value > 99.4) {
-        setRevealed(true);
-        return;
-      }
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [ready, mounted, webgl]);
 
   const showScene = mounted && webgl === true;
   const showPoster = mounted && webgl === false;
@@ -178,7 +129,7 @@ export function ProductScrollSection() {
       aria-labelledby="hero-title"
     >
       <div className="pr-pin" ref={pinRef}>
-        <div className={`pr-canvas${revealed || showPoster ? " pr-canvas--in" : ""}`}>
+        <div className={`pr-canvas${ready || showPoster ? " pr-canvas--in" : ""}`}>
           {showScene && (
             <ProductScene
               config={SCENE}
@@ -188,6 +139,7 @@ export function ProductScrollSection() {
               stillView={stillView}
               fixed={fixed}
               active={active}
+              dark={dark}
               onReady={onReady}
             />
           )}
@@ -212,17 +164,6 @@ export function ProductScrollSection() {
 
         <Copy store={store} staticProgress={!mounted ? 0 : animated ? undefined : (fixed ?? 1)} />
 
-        {webgl !== false && (
-          <div className={`pr-loader${revealed ? " pr-loader--gone" : ""}`} aria-hidden="true">
-            <p className="pr-loader-mark">Velvé</p>
-            <div className="pr-loader-track">
-              <div className="pr-loader-line" ref={lineRef} />
-            </div>
-            <p className="pr-loader-text">
-              <span ref={numberRef}>0</span>%
-            </p>
-          </div>
-        )}
       </div>
     </section>
   );

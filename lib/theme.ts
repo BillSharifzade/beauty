@@ -11,6 +11,8 @@
  * first paint (no flash), and again here whenever the choice changes.
  */
 
+import { useEffect, useState } from "react";
+
 export type Theme = "system" | "light" | "dark";
 
 export const THEME_KEY = "velve-theme";
@@ -72,4 +74,27 @@ export function setTheme(t: Theme) {
   }
 
   window.dispatchEvent(new CustomEvent(THEME_EVENT, { detail: t }));
+}
+
+/**
+ * The theme as it currently resolves, for the parts of the page that cannot
+ * read a CSS token: the 3D studio's exposure and shadow. Light until mounted,
+ * then whatever the person or the system chose, and kept in step with both.
+ */
+export function useResolvedTheme(): "light" | "dark" {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const sync = () => setTheme(resolvedTheme(readTheme()));
+    sync();
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    window.addEventListener(THEME_EVENT, sync);
+    mq.addEventListener("change", sync);
+    return () => {
+      window.removeEventListener(THEME_EVENT, sync);
+      mq.removeEventListener("change", sync);
+    };
+  }, []);
+
+  return theme;
 }

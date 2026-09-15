@@ -144,6 +144,22 @@
   --slow: 0.44s;
 
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+  /* ---- The studio ---------------------------------------------------------
+   * The room the products are photographed in: the hero and the collection
+   * cards. Light and airy by day, a black room with lights in it by night. */
+  --studio-bg: #f7f7f9;
+  --studio-bg-edge: #e4e4ea;
+  --studio-glow: rgba(244, 0, 161, 0.1);
+  --studio-haze: rgba(244, 0, 161, 0.06);
+  --studio-fade: rgba(255, 255, 255, 0.72);
+  --studio-text: #0b0b0d;
+  --studio-muted: #5c5c66;
+  --studio-faint: #8c8c96;
+  --studio-accent: #f400a1;
+  --studio-line: rgba(11, 11, 13, 0.1);
+  --studio-grain-blend: multiply;
+  --studio-grain-opacity: 0.05;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -212,6 +228,19 @@
     --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 48px rgba(0, 0, 0, 0.5);
     --wash: rgba(244, 0, 161, 0.1);
     --wash-2: rgba(244, 0, 161, 0.05);
+
+    --studio-bg: #151515;
+    --studio-bg-edge: #050505;
+    --studio-glow: rgba(244, 0, 161, 0.12);
+    --studio-haze: rgba(255, 255, 255, 0.07);
+    --studio-fade: rgba(0, 0, 0, 0.55);
+    --studio-text: #f7f7f9;
+    --studio-muted: rgba(244, 244, 246, 0.6);
+    --studio-faint: rgba(255, 255, 255, 0.44);
+    --studio-accent: #ff7fd0;
+    --studio-line: rgba(255, 255, 255, 0.1);
+    --studio-grain-blend: screen;
+    --studio-grain-opacity: 0.06;
   }
 }
 
@@ -272,6 +301,19 @@
   --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 48px rgba(0, 0, 0, 0.5);
   --wash: rgba(244, 0, 161, 0.1);
   --wash-2: rgba(244, 0, 161, 0.05);
+
+  --studio-bg: #151515;
+  --studio-bg-edge: #050505;
+  --studio-glow: rgba(244, 0, 161, 0.12);
+  --studio-haze: rgba(255, 255, 255, 0.07);
+  --studio-fade: rgba(0, 0, 0, 0.55);
+  --studio-text: #f7f7f9;
+  --studio-muted: rgba(244, 244, 246, 0.6);
+  --studio-faint: rgba(255, 255, 255, 0.44);
+  --studio-accent: #ff7fd0;
+  --studio-line: rgba(255, 255, 255, 0.1);
+  --studio-grain-blend: screen;
+  --studio-grain-opacity: 0.06;
 }
 
 /* Glass falls back to a solid surface where it cannot be drawn, or where the
@@ -310,6 +352,11 @@ body {
 /* Anchors glide instead of jumping. */
 html {
   scroll-behavior: smooth;
+}
+
+/* While the preloader is up the page behind it does not scroll. */
+html.is-loading {
+  overflow: hidden;
 }
 
 /* The wash. Fixed and behind everything, so it never scrolls and never

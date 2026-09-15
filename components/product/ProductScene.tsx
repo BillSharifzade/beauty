@@ -187,9 +187,11 @@ interface RigProps {
   stillView: StillView | null;
   /** The sequence held at one progress value, for tuning and screenshots. */
   fixed: number | null;
+  /** The studio is a black room by night and a white one by day. */
+  dark: boolean;
 }
 
-function Rig({ config, handles, store, compact, still, stillView, fixed }: RigProps) {
+function Rig({ config, handles, store, compact, still, stillView, fixed, dark }: RigProps) {
   const groupRef = useRef<Group>(null);
   const shadowRef = useRef<Group>(null);
   const shadowMaterial = useRef<Material | null>(null);
@@ -480,7 +482,8 @@ function Rig({ config, handles, store, compact, still, stillView, fixed }: RigPr
     if (rimLight.current) rimLight.current.intensity = windowT(p, at - 0.04, at + 0.1, EASES["power2.out"]) * 3.4;
     if (accentLight.current) accentLight.current.intensity = windowT(p, at, at + 0.14, EASES["power2.out"]) * 0.55;
     if (shadowMaterial.current) {
-      shadowMaterial.current.opacity = windowT(p, 0.02, 0.12, EASES["power2.out"]) * config.shadow.opacity;
+      shadowMaterial.current.opacity =
+        windowT(p, 0.02, 0.12, EASES["power2.out"]) * config.shadow.opacity * (dark ? 1 : 0.78);
     }
   });
 
@@ -516,6 +519,17 @@ function StillTicker() {
   return null;
 }
 
+/** Exposure follows the theme: a touch brighter in the black room. */
+function Exposure({ dark }: { dark: boolean }) {
+  const gl = useThree((state) => state.gl);
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    gl.toneMappingExposure = dark ? 1.05 : 1.0;
+    invalidate();
+  }, [gl, dark, invalidate]);
+  return null;
+}
+
 /** Reports the scene as ready once frames are actually reaching the screen,
  *  rather than once React thinks it has mounted. In demand mode it asks for
  *  the frames it needs, since nothing else will. */
@@ -537,6 +551,7 @@ export function ProductScene({
   stillView,
   fixed = null,
   active,
+  dark,
   onReady,
 }: {
   config: SceneConfig;
@@ -545,6 +560,7 @@ export function ProductScene({
   still: boolean;
   stillView: StillView | null;
   fixed?: number | null;
+  dark: boolean;
   /** False while the section is off screen: the loop stops drawing frames
    *  nobody can see. */
   active: boolean;
@@ -569,7 +585,7 @@ export function ProductScene({
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.toneMapping = ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
+        gl.toneMappingExposure = dark ? 1.05 : 1.0;
         // What the glass refracts is a second render of the scene. Half the
         // resolution on a phone halves the cost of the one expensive material
         // in the scene, and at that size nobody can see the difference.
@@ -587,10 +603,12 @@ export function ProductScene({
           still={still}
           stillView={stillView}
           fixed={fixed}
+          dark={dark}
         />
       </Suspense>
       <PerformanceMonitor />
       <AdaptiveDpr />
+      <Exposure dark={dark} />
       {frozen && <StillTicker />}
       <ReadyProbe onReady={onReady} />
     </Canvas>

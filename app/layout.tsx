@@ -85,9 +85,9 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
-        {/* Without scripting the scene never arrives; the loader must not wait for it. */}
+        {/* Without scripting the scene never arrives; the preloader must not wait for it. */}
         <noscript>
-          <style>{`.pr-loader{display:none}`}</style>
+          <style>{`.preloader{display:none}`}</style>
         </noscript>
       </head>
       <body>{children}</body>

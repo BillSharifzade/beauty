@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mark, Wordmark } from "@/components/Brand";
+import { CollectionCanvas } from "@/components/collection/CollectionCanvas";
+import { ProductView } from "@/components/collection/ProductView";
+import { Counter } from "@/components/landing/Counter";
 import { LogoWall } from "@/components/landing/LogoWall";
 import { NavSpy } from "@/components/landing/NavSpy";
+import { Preloader } from "@/components/landing/Preloader";
 import { Reveal } from "@/components/landing/Reveal";
-import { Still } from "@/components/landing/Still";
+import { Words } from "@/components/landing/Words";
 import { ProductScrollSection } from "@/components/product/ProductScrollSection";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import type { ProductId } from "@/components/product/config/types";
 
 /**
  * The landing page.
@@ -51,13 +56,22 @@ const principles = [
 ];
 
 const numbers = [
-  { n: "0", l: "сульфатов, парабенов и минерального масла" },
-  { n: "5,5", l: "pH шампуня — как у здоровой кожи головы" },
-  { n: "12", l: "активных компонентов во всей коллекции" },
-  { n: "32", l: "детали в пяти продуктах, каждая на своём месте" },
+  { n: 0, d: 0, l: "сульфатов, парабенов и минерального масла" },
+  { n: 5.5, d: 1, l: "pH шампуня — как у здоровой кожи головы" },
+  { n: 12, d: 0, l: "активных компонентов во всей коллекции" },
+  { n: 32, d: 0, l: "детали в пяти продуктах, каждая на своём месте" },
 ];
 
-const products = [
+const products: {
+  id: ProductId;
+  index: string;
+  name: string;
+  latin: string;
+  volume: string;
+  line: string;
+  actives: string[];
+  shades: string[];
+}[] = [
   {
     id: "cream",
     index: "01",
@@ -66,7 +80,7 @@ const products = [
     volume: "50 ml",
     line: "Сорок восемь часов увлажнения. Плотная текстура, которая впитывается и не оставляет плёнки.",
     actives: ["Ниацинамид 5%", "Церамиды NP", "Сквалан"],
-    shades: [] as string[],
+    shades: [],
   },
   {
     id: "tint",
@@ -86,7 +100,7 @@ const products = [
     volume: "300 ml",
     line: "Мягкое очищение при pH 5,5: без сульфатов, с пантенолом и инулином для кожи головы.",
     actives: ["Пантенол", "Инулин", "Коко-глюкозид"],
-    shades: [] as string[],
+    shades: [],
   },
   {
     id: "mascara",
@@ -128,6 +142,7 @@ const formula = {
 export default function Landing() {
   return (
     <main className="lp" id="main">
+      <Preloader />
       <a className="lp-skip" href="#collection">
         К содержанию
       </a>
@@ -159,7 +174,10 @@ export default function Landing() {
         </Reveal>
         <Reveal delay={60}>
           <h2 className="lp-display">
-            Мы не добавляем ничего, <span className="lp-accent">что не можем объяснить.</span>
+            <Words text="Мы не добавляем ничего," />{" "}
+            <span className="lp-accent">
+              <Words text="что не можем объяснить." from={4} />
+            </span>
           </h2>
         </Reveal>
         <Reveal delay={120}>
@@ -185,11 +203,25 @@ export default function Landing() {
           {numbers.map((s) => (
             <div className="lp-number" key={s.l}>
               <dt className="lp-number-l">{s.l}</dt>
-              <dd className="lp-number-n">{s.n}</dd>
+              <dd className="lp-number-n">
+                <Counter value={s.n} decimals={s.d} />
+              </dd>
             </div>
           ))}
         </Reveal>
       </section>
+
+      {/* ---- The wordmark, going by ---- */}
+      <div className="lp-ticker" aria-hidden="true">
+        <div className="lp-ticker-track">
+          {[0, 1].map((copy) => (
+            <span className="lp-ticker-run" key={copy}>
+              Velvé <em>·</em> Красота, собранная точно <em>·</em> Velvé <em>·</em> Пять формул, одна точность{" "}
+              <em>·</em>{" "}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {/* ---- Collection ---- */}
       <section className="lp-section lp-collection" id="collection">
@@ -198,12 +230,14 @@ export default function Landing() {
             <p className="lp-eyebrow">Коллекция 2026</p>
           </Reveal>
           <Reveal delay={60}>
-            <h2 className="lp-h2">Пять продуктов. Одна система.</h2>
+            <h2 className="lp-h2">
+              <Words text="Пять продуктов. Одна система." />
+            </h2>
           </Reveal>
           <Reveal delay={120}>
             <p className="lp-section-lede">
               Уход и макияж, которые не спорят друг с другом: один pH, одни принципы состава, одна
-              полка в ванной.
+              полка в ванной. Наведите на продукт, и он раскроется.
             </p>
           </Reveal>
         </div>
@@ -211,9 +245,7 @@ export default function Landing() {
         <ol className="lp-products">
           {products.map((p, i) => (
             <Reveal key={p.id} delay={i * 60} as="li" className={`lp-product lp-product--${p.id}`}>
-              <figure className="lp-product-visual" data-index={p.index}>
-                <Still id={p.id} alt={`${p.name} Velvé ${p.latin}`} />
-              </figure>
+              <ProductView id={p.id} index={p.index} />
               <div className="lp-product-body">
                 <span className="lp-product-index">{p.index}</span>
                 <h3 className="lp-product-name">
@@ -248,7 +280,9 @@ export default function Landing() {
             <p className="lp-eyebrow">Формула</p>
           </Reveal>
           <Reveal delay={60}>
-            <h2 className="lp-h2">Что внутри. И чего нет.</h2>
+            <h2 className="lp-h2">
+              <Words text="Что внутри. И чего нет." />
+            </h2>
           </Reveal>
           <Reveal delay={120}>
             <p className="lp-section-lede">
@@ -258,7 +292,14 @@ export default function Landing() {
           </Reveal>
         </div>
 
-        <Reveal delay={160} className="lp-ledger">
+        <div className="lp-formula">
+          <Reveal className="lp-blob" aria-hidden="true">
+            <span className="lp-blob-a" />
+            <span className="lp-blob-b" />
+            <span className="lp-blob-c" />
+            <span className="lp-blob-label">pH 5,5</span>
+          </Reveal>
+          <Reveal delay={160} className="lp-ledger">
           <div className="lp-ledger-col">
             <h3>Есть</h3>
             <ul>
@@ -279,13 +320,16 @@ export default function Landing() {
               ))}
             </ul>
           </div>
-        </Reveal>
+          </Reveal>
+        </div>
       </section>
 
       {/* ---- The one full-bleed block of colour ---- */}
       <aside className="lp-quote" aria-label="Принцип">
         <Reveal className="lp-quote-inner">
-          <p className="lp-quote-line">Меньше, но точнее.</p>
+          <p className="lp-quote-line">
+            <Words text="Меньше, но точнее." />
+          </p>
           <p className="lp-quote-body">
             В каждом продукте ровно столько компонентов, сколько нужно, чтобы он работал. Ни
             одного — ради длинного списка на упаковке.
@@ -301,7 +345,7 @@ export default function Landing() {
           </Reveal>
           <Reveal delay={60}>
             <h2 className="lp-h2" id="partners-title">
-              В одной витрине с брендами, которым доверяют
+              <Words text="В одной витрине с брендами, которым доверяют" />
             </h2>
           </Reveal>
           <Reveal delay={120}>
@@ -320,7 +364,9 @@ export default function Landing() {
           <p className="lp-eyebrow">Осень 2026</p>
         </Reveal>
         <Reveal delay={60}>
-          <h2 className="lp-display">Увидеть вживую.</h2>
+          <h2 className="lp-display">
+            <Words text="Увидеть вживую." />
+          </h2>
         </Reveal>
         <Reveal delay={120}>
           <p className="lp-section-lede">
@@ -353,6 +399,8 @@ export default function Landing() {
           © 2026 Velvé. Сайт-презентация: продукты и составы носят демонстрационный характер.
         </p>
       </footer>
+
+      <CollectionCanvas />
     </main>
   );
 }
