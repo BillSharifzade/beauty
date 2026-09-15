@@ -2,39 +2,42 @@
 
 import { useCallback, type ReactNode } from "react";
 import type { Object3D } from "three";
-import type { PartKey } from "../config/types";
+import { partKey, type ProductId } from "../config/types";
 import type { ProductHandles } from "../handles";
 
 /**
- * One named part of the product.
+ * One named part of a product.
  *
- * The group carries the name the GLB would carry, so the procedural bottle and
- * a modelled one are indistinguishable to the rig. Position, rotation and
- * scale are deliberately not props: the rig owns them from the first frame,
- * and setting them here too would mean two writers for one value.
+ * The group carries the part's name so the rig can find it. Position,
+ * rotation and scale are deliberately not props: the rig owns them from the
+ * first frame, and setting them here too would mean two writers for one
+ * value.
  */
 export function Part({
+  product,
   id,
   handles,
   children,
 }: {
-  id: PartKey;
+  product: ProductId;
+  id: string;
   handles: ProductHandles;
   children: ReactNode;
 }) {
+  const key = partKey(product, id);
   const ref = useCallback(
     (object: Object3D | null) => {
       if (!object) return undefined;
-      handles.parts.set(id, object);
+      handles.parts.set(key, object);
       return () => {
-        handles.parts.delete(id);
+        handles.parts.delete(key);
       };
     },
-    [id, handles],
+    [key, handles],
   );
 
   return (
-    <group ref={ref} name={id}>
+    <group ref={ref} name={key}>
       {children}
     </group>
   );

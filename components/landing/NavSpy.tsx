@@ -54,9 +54,9 @@ export function NavSpy({ ids }: { ids: string[] }) {
     };
 
     observe();
-    window.addEventListener("hb:sections-changed", observe);
+    window.addEventListener("lp:sections-changed", observe);
     return () => {
-      window.removeEventListener("hb:sections-changed", observe);
+      window.removeEventListener("lp:sections-changed", observe);
       io?.disconnect();
     };
   }, [ids]);

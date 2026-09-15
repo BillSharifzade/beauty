@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   // Plain <img src> and texture URLs are not rewritten by basePath the way
   // next/link is, so the pages read the prefix from here (see lib/asset.ts).
   env: { NEXT_PUBLIC_BASE_PATH: basePath },
+  // The dev server would otherwise write AGENTS.md and CLAUDE.md into the
+  // repository on every start.
+  agentRules: false,
 };
 
 export default nextConfig;

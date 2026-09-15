@@ -3,7 +3,7 @@
 import { Environment, Lightformer } from "@react-three/drei";
 import type { RefObject } from "react";
 import type { DirectionalLight, SpotLight } from "three";
-import type { ProductConfig } from "./config/types";
+import type { SceneConfig } from "./config/types";
 
 /**
  * A studio, with no HDRI file to download.
@@ -20,23 +20,18 @@ import type { ProductConfig } from "./config/types";
  * move over the scroll are the real ones below, and the rig owns them, so the
  * whole section still has exactly one useFrame.
  *
- * To use a measured probe instead, drop a .hdr into public/hdri and name it in
- * config.environment.hdr; the softboxes then step aside.
+ * The row is wide, so the softboxes are: every former spans the whole lineup.
  */
 export function StudioEnvironment({
   config,
   compact,
 }: {
-  config: ProductConfig;
+  config: SceneConfig;
   compact: boolean;
 }) {
   const resolution = compact
     ? config.environment.resolutionCompact
     : config.environment.resolution;
-
-  if (config.environment.hdr) {
-    return <Environment files={config.environment.hdr} resolution={resolution} />;
-  }
 
   return (
     <Environment resolution={resolution} frames={1}>
@@ -90,8 +85,8 @@ export function StudioEnvironment({
         position={[1.6, 0.1, 2.6]}
         scale={[0.14, 5.5, 1]}
       />
-      {/* A trace of the shop's pink in the room, well under the point where it
-          would tint the product. */}
+      {/* A trace of the brand's pink in the room, well under the point where
+          it would tint the products. */}
       <Lightformer
         form="circle"
         intensity={0.6}

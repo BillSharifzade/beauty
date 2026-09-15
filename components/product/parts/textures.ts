@@ -3,15 +3,14 @@ import { CanvasTexture, LinearFilter, RepeatWrapping, SRGBColorSpace, Texture } 
 /**
  * Textures drawn in the browser rather than shipped as files.
  *
- * A landing page that pulls two megabytes of 4K maps to show one bottle has
- * paid for the render with the thing the render was supposed to sell. All
- * three maps here are generated once on the client: a noise map that gives the
- * plastic its imperfections, the printed label, and the shop's own mark.
+ * A landing page that pulls two megabytes of maps to show five products has
+ * paid for the render with the thing the render was supposed to sell. All of
+ * the maps here are generated once on the client: a noise map that gives the
+ * plastic its imperfections, five printed labels, and the brand's mark.
  *
  * Everything returns null rather than throwing when a 2D context is not
  * available: the scene has to survive a browser that gives us WebGL but not a
- * canvas context, and a missing roughness map is a slightly cleaner bottle,
- * not a blank section.
+ * canvas context, and a missing label is a plainer bottle, not a blank section.
  */
 
 function makeCanvas(width: number, height: number): CanvasRenderingContext2D | null {
@@ -33,15 +32,12 @@ export function createImperfectionMap(size = 512): CanvasTexture | null {
   if (!ctx) return null;
 
   // Near white, deliberately. A roughness map multiplies the material's own
-  // roughness, so a mid-grey map halves whatever the material asked for — and
-  // on transmissive glass that difference is the difference between seeing the
-  // dip tube through the wall and not. The map varies the value; it does not
-  // set it.
+  // roughness, so a mid-grey map halves whatever the material asked for. The
+  // map varies the value; it does not set it.
   ctx.fillStyle = "#e8e8e8";
   ctx.fillRect(0, 0, size, size);
 
-  // Deterministic noise: the same bottle every reload, and no dependency on
-  // Math.random ordering between the label draw and this one.
+  // Deterministic noise: the same products every reload.
   let seed = 0x2f6e2b1;
   const rand = () => {
     seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -83,15 +79,18 @@ export function createImperfectionMap(size = 512): CanvasTexture | null {
   return texture;
 }
 
-/** The family name next/font generated for Fixel Display, so the label is set
- *  in the shop's own face rather than in whatever the canvas defaults to. */
-function displayFamily(): string {
-  if (typeof document === "undefined") return "sans-serif";
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue("--font-display")
-    .trim();
-  return value.length > 0 ? `${value}, sans-serif` : "sans-serif";
+/* ---- Type on the labels ---------------------------------------------------
+ * The families next/font generated, read off the document so the labels are
+ * set in the page's own faces: the serif for the name, the display sans for
+ * everything else. */
+function family(variable: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+  return value.length > 0 ? `${value}, ${fallback}` : fallback;
 }
+
+const serif = () => family("--font-serif", "serif");
+const display = () => family("--font-display", "sans-serif");
 
 function setTracking(ctx: CanvasRenderingContext2D, px: number): void {
   // letterSpacing is Chromium-and-friends only; without it the label is merely
@@ -99,25 +98,20 @@ function setTracking(ctx: CanvasRenderingContext2D, px: number): void {
   if ("letterSpacing" in ctx) ctx.letterSpacing = `${px}px`;
 }
 
-/**
- * The printed label.
- *
- * Drawn centred, because u = 0.5 of the strip is the point that faces the
- * camera once the label wraps: the name has to be at the middle of the arc,
- * not at its left edge.
- */
-export function drawLabel(ctx: CanvasRenderingContext2D): void {
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
-  const family = displayFamily();
-  const cx = w / 2;
+/** The brand name, the way the wordmark sets it: serif, capitals, wide. */
+function wordmark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
+  ctx.fillStyle = color;
+  setTracking(ctx, size * 0.26);
+  ctx.font = `500 ${size}px ${serif()}`;
+  ctx.fillText("VELVÉ", x, y);
+  setTracking(ctx, 0);
+}
 
+/** The faint tonal roll a printed stock has under a softbox. */
+function paper(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#f4f1ec";
   ctx.fillRect(0, 0, w, h);
-
-  // A paper that is perfectly flat reads as a swatch; this is the faint tonal
-  // roll a printed stock has under a softbox.
   const sheen = ctx.createLinearGradient(0, 0, w, 0);
   sheen.addColorStop(0, "rgba(0, 0, 0, 0.06)");
   sheen.addColorStop(0.42, "rgba(255, 255, 255, 0.05)");
@@ -125,99 +119,211 @@ export function drawLabel(ctx: CanvasRenderingContext2D): void {
   sheen.addColorStop(1, "rgba(0, 0, 0, 0.07)");
   ctx.fillStyle = sheen;
   ctx.fillRect(0, 0, w, h);
+}
 
+function rule(ctx: CanvasRenderingContext2D, x1: number, x2: number, y: number, color: string, width = 1): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x1, y);
+  ctx.lineTo(x2, y);
+  ctx.stroke();
+}
+
+/** The fine print at the edges, which wraps round the sides of a body where a
+ *  real label puts its ingredients. Never legible, always present. */
+function smallPrint(ctx: CanvasRenderingContext2D, w: number, top: number, lines: readonly string[], size = 13): void {
+  ctx.fillStyle = "rgba(90, 90, 100, 0.5)";
+  ctx.font = `400 ${size}px ${display()}`;
+  ctx.textAlign = "left";
+  lines.forEach((line, i) => ctx.fillText(line, 34, top + i * (size + 9)));
+  ctx.textAlign = "right";
+  lines.forEach((line, i) => ctx.fillText(line, w - 34, top + i * (size + 9)));
+  ctx.textAlign = "center";
+}
+
+/** Text standing on its side, for the products that stand upright and read
+ *  along their height: the mascara and the pencil. */
+function vertical(ctx: CanvasRenderingContext2D, w: number, h: number, draw: () => void): void {
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = "center";
+  draw();
+  ctx.restore();
+}
+
+/* ---- The five labels --------------------------------------------------------
+ * Every one is drawn centred, because u = 0.5 of the strip is the point that
+ * faces the camera once the label wraps: the name has to be at the middle of
+ * the arc, not at its left edge. */
+
+export function drawShampooLabel(ctx: CanvasRenderingContext2D): void {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const cx = w / 2;
+  paper(ctx, w, h);
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
 
-  // Eyebrow with rules either side.
-  ctx.fillStyle = "#c8008a";
-  setTracking(ctx, 9);
-  ctx.font = `500 27px ${family}`;
-  ctx.fillText("HAYAT BEAUTY", cx, 118);
-  setTracking(ctx, 0);
-
-  ctx.strokeStyle = "rgba(200, 0, 138, 0.45)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(cx - 330, 110);
-  ctx.lineTo(cx - 160, 110);
-  ctx.moveTo(cx + 160, 110);
-  ctx.lineTo(cx + 330, 110);
-  ctx.stroke();
+  wordmark(ctx, cx, 122, 38, "#c8008a");
+  rule(ctx, cx - 330, cx - 150, 110, "rgba(200, 0, 138, 0.45)", 1.5);
+  rule(ctx, cx + 150, cx + 330, 110, "rgba(200, 0, 138, 0.45)", 1.5);
 
   ctx.fillStyle = "#141419";
   setTracking(ctx, 4);
-  ctx.font = `600 108px ${family}`;
+  ctx.font = `600 108px ${display()}`;
   ctx.fillText("SHAMPOO", cx, 268);
 
   ctx.fillStyle = "#5c5c66";
   setTracking(ctx, 7);
-  ctx.font = `400 27px ${family}`;
-  ctx.fillText("УХОД ЗА ВОЛОСАМИ", cx, 328);
+  ctx.font = `400 27px ${display()}`;
+  ctx.fillText("МЯГКОЕ ОЧИЩЕНИЕ", cx, 328);
 
-  ctx.strokeStyle = "rgba(20, 20, 25, 0.18)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(cx - 260, 372);
-  ctx.lineTo(cx + 260, 372);
-  ctx.stroke();
+  rule(ctx, cx - 260, cx + 260, 372, "rgba(20, 20, 25, 0.18)");
 
   ctx.fillStyle = "#6b6b74";
   setTracking(ctx, 5);
-  ctx.font = `400 24px ${family}`;
+  ctx.font = `400 24px ${display()}`;
   ctx.fillText("БЕЗ СУЛЬФАТОВ · pH 5.5 · 300 ml", cx, 424);
   setTracking(ctx, 0);
 
-  // The fine print at the edges wraps around the sides of the bottle, where a
-  // real label puts its ingredients. Never legible, always present.
-  ctx.fillStyle = "rgba(90, 90, 100, 0.5)";
-  ctx.font = `400 13px ${family}`;
-  ctx.textAlign = "left";
-  const smallPrint = [
-    "AQUA · COCAMIDOPROPYL BETAINE · GLYCERIN",
-    "PANTHENOL · CITRIC ACID · PARFUM",
-    "HAYAT BEAUTY, DUSHANBE · HBSHOP.TJ",
-  ];
-  smallPrint.forEach((line, i) => {
-    ctx.fillText(line, 34, 150 + i * 22);
-  });
-  ctx.textAlign = "right";
-  smallPrint.forEach((line, i) => {
-    ctx.fillText(line, w - 34, 150 + i * 22);
-  });
+  smallPrint(ctx, w, 150, [
+    "AQUA · COCO-GLUCOSIDE · GLYCERIN",
+    "PANTHENOL · INULIN · CITRIC ACID",
+    "VELVÉ BEAUTY · COLLECTION 2026",
+  ]);
+}
+
+export function drawCreamLabel(ctx: CanvasRenderingContext2D): void {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const cx = w / 2;
+  paper(ctx, w, h);
   ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  wordmark(ctx, cx, 84, 34, "#c8008a");
+
+  ctx.fillStyle = "#141419";
+  setTracking(ctx, 6);
+  ctx.font = `600 64px ${display()}`;
+  ctx.fillText("HYDRA CREAM", cx, 162);
+
+  ctx.fillStyle = "#6b6b74";
+  setTracking(ctx, 5);
+  ctx.font = `400 21px ${display()}`;
+  ctx.fillText("УВЛАЖНЯЮЩИЙ КРЕМ · 48 H · 50 ml", cx, 212);
+  setTracking(ctx, 0);
+
+  smallPrint(ctx, w, 96, ["AQUA · SQUALANE", "NIACINAMIDE 5%", "CERAMIDE NP"], 12);
+}
+
+export function drawTintLabel(ctx: CanvasRenderingContext2D): void {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const cx = w / 2;
+  paper(ctx, w, h);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  wordmark(ctx, cx, 92, 30, "#c8008a");
+
+  ctx.fillStyle = "#141419";
+  setTracking(ctx, 4);
+  ctx.font = `600 92px ${display()}`;
+  ctx.fillText("TINT", cx, 206);
+
+  ctx.fillStyle = "#c8008a";
+  setTracking(ctx, 6);
+  ctx.font = `500 22px ${display()}`;
+  ctx.fillText("04 · ROSE", cx, 256);
+
+  rule(ctx, cx - 120, cx + 120, 284, "rgba(20, 20, 25, 0.18)");
+
+  ctx.fillStyle = "#6b6b74";
+  setTracking(ctx, 4);
+  ctx.font = `400 18px ${display()}`;
+  ctx.fillText("ТИНТ ДЛЯ ГУБ · 6 ml", cx, 322);
+  setTracking(ctx, 0);
+}
+
+export function drawMascaraLabel(ctx: CanvasRenderingContext2D): void {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  // Printed straight onto the black tube: the base matches the lacquer.
+  ctx.fillStyle = "#0d0d10";
+  ctx.fillRect(0, 0, w, h);
+  ctx.textBaseline = "middle";
+
+  vertical(ctx, w, h, () => {
+    wordmark(ctx, -150, 0, 60, "#f7f7f9");
+    ctx.fillStyle = "rgba(247, 247, 249, 0.72)";
+    setTracking(ctx, 8);
+    ctx.font = `500 26px ${display()}`;
+    ctx.fillText("VOLUME MASCARA", 120, 2);
+    ctx.fillStyle = "rgba(247, 247, 249, 0.4)";
+    setTracking(ctx, 5);
+    ctx.font = `400 16px ${display()}`;
+    ctx.fillText("01 · BLACK · 9 ml", 300, 2);
+    setTracking(ctx, 0);
+  });
+}
+
+export function drawPencilLabel(ctx: CanvasRenderingContext2D): void {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  // Printed straight onto the pink lacquer.
+  ctx.fillStyle = "#f400a1";
+  ctx.fillRect(0, 0, w, h);
+  ctx.textBaseline = "middle";
+
+  vertical(ctx, w, h, () => {
+    wordmark(ctx, -260, 0, 64, "#ffffff");
+    ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+    setTracking(ctx, 6);
+    ctx.font = `500 24px ${display()}`;
+    ctx.fillText("EYE PENCIL · 01 NOIR", 140, 2);
+    setTracking(ctx, 0);
+  });
 }
 
 export interface LabelTexture {
   texture: CanvasTexture;
-  /** Redraw once the display face has actually loaded. Called by the scene. */
+  /** Redraw once the faces have actually loaded. Called by the collection. */
   refresh: () => void;
 }
 
-export function createLabelTexture(width = 1024, height = 512): LabelTexture | null {
+export function createLabelTexture(
+  draw: (ctx: CanvasRenderingContext2D) => void,
+  width: number,
+  height: number,
+): LabelTexture | null {
   const ctx = makeCanvas(width, height);
   if (!ctx) return null;
-  drawLabel(ctx);
+  draw(ctx);
   const texture = new CanvasTexture(ctx.canvas);
   texture.colorSpace = SRGBColorSpace;
   texture.anisotropy = 8;
   return {
     texture,
     refresh: () => {
-      drawLabel(ctx);
+      draw(ctx);
       texture.needsUpdate = true;
     },
   };
 }
 
 /**
- * The shop's mark, taken from public/brand/hb-mark.svg.
+ * The brand's mark, taken from an SVG under public/brand.
  *
  * The file declares itself 64px square, and a browser rasterises an SVG image
  * at its intrinsic size before drawImage ever sees it, which would put a
- * 64-pixel logo on the bottle. Rewriting the two attributes in the source and
- * loading that through a blob is the difference between a crisp mark and a
- * smear, and it still means one source of truth for the artwork.
+ * 64-pixel logo on the products. Rewriting the two attributes in the source
+ * and loading that through a blob is the difference between a crisp mark and
+ * a smear, and it still means one source of truth for the artwork.
  */
 export function loadLogoTexture(src: string, size = 512): Promise<Texture | null> {
   if (typeof document === "undefined") return Promise.resolve(null);

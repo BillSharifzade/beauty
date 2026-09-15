@@ -1,21 +1,23 @@
 import type { Object3D } from "three";
-import type { PartKey } from "./config/types";
+import type { ProductId } from "./config/types";
 
 /**
- * The wiring between whichever component drew the product and the rig that
- * animates it.
+ * The wiring between the components that draw the products and the rig that
+ * animates them.
  *
  * Deliberately not React state: the rig writes to these objects sixty times a
  * second and a re-render per frame would be the whole performance budget. The
- * maps are filled by ref callbacks and read inside useFrame.
+ * maps are filled by ref callbacks and read inside useFrame. Part keys are
+ * `product/part`, see partKey in config/types.ts.
  */
 export interface ProductHandles {
-  parts: Map<PartKey, Object3D>;
-  /** Parts that change shape rather than place. The label wraps; a GLB model
-   *  can leave this empty and the rig simply has nothing to bend. */
-  deformers: Map<PartKey, (t: number) => void>;
+  /** One group per product: the rig places it on its slot and yaws it. */
+  products: Map<ProductId, Object3D>;
+  parts: Map<string, Object3D>;
+  /** Parts that change shape rather than place: the labels wrap. */
+  deformers: Map<string, (t: number) => void>;
 }
 
 export function createHandles(): ProductHandles {
-  return { parts: new Map(), deformers: new Map() };
+  return { products: new Map(), parts: new Map(), deformers: new Map() };
 }

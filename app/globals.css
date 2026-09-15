@@ -1,11 +1,11 @@
 /*
  * Design tokens.
  *
- * Direction: Hayat Beauty's own colour, used the way a serious brand uses it —
- * flat, once per screen, on the thing that matters. The shop's magenta
- * (#F400A1) carries every primary action, the mark, the active item, the fill
- * of a meter. Everything else is neutral: near-black ink, true greys, white.
- * No gradients anywhere; no second hue competing with the pink.
+ * Direction: one colour, used the way a serious brand uses it — flat, once
+ * per screen, on the thing that matters. Velvé's magenta (#F400A1) carries
+ * every primary action, the mark, the active item. Everything else is
+ * neutral: near-black ink, true greys, white. No gradients anywhere; no
+ * second hue competing with the pink.
  *
  * Everything a component needs comes from here. A raw hex, a magic padding or
  * a one-off duration in a component is a bug: it is how an interface drifts
@@ -131,8 +131,6 @@
   --radius-pill: 999px;
 
   --column: 46rem;
-  --admin-column: 78rem;
-  --rail: 15.5rem;
 
   --shadow-xs: 0 1px 2px rgba(11, 11, 13, 0.05);
   --shadow-sm: 0 1px 2px rgba(11, 11, 13, 0.05), 0 4px 12px rgba(11, 11, 13, 0.05);
@@ -378,15 +376,16 @@ figure {
   margin: 0;
 }
 
-/* Headings carry the identity: the shop's own geometric sans, set tight. */
+/* Headings carry the identity: the serif, set large and light. Small
+ * headings inside components switch to the display sans themselves. */
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-weight: var(--weight-semibold);
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 500;
   line-height: var(--leading-tight);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
 }
 
 button,
@@ -431,7 +430,7 @@ a {
 
 /* The display face for numbers that are the point of a screen. */
 .display {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-serif), Georgia, serif;
   letter-spacing: -0.02em;
 }
 
@@ -539,33 +538,13 @@ textarea {
  * Every floating surface gets the token on top of its own literal, so tuning
  * the blur or switching it off for reduced transparency happens here. The
  * html prefix outranks the per-file rules whatever the import order. */
-html .lp-nav,
-html .topbar,
-html .sidebar,
-html .auth-card,
-html .tr-top,
-html .tr-tabbar,
-html .compat-hits,
-html .admin-nav,
-html .admin-topbar,
-html .dialog,
-html .select-list {
+html .lp-nav {
   -webkit-backdrop-filter: var(--glass-filter);
   backdrop-filter: var(--glass-filter);
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  html .lp-nav,
-  html .topbar,
-  html .sidebar,
-  html .auth-card,
-  html .tr-top,
-  html .tr-tabbar,
-  html .compat-hits,
-  html .admin-nav,
-  html .admin-topbar,
-  html .dialog,
-  html .select-list {
+  html .lp-nav {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

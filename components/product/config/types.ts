@@ -1,31 +1,23 @@
 import type { EaseName } from "../easing";
 
 /**
- * The contract between a product and the scroll rig.
+ * The contract between the collection and the scroll rig.
  *
- * Everything the assembly sequence knows about the shampoo lives in a value of
- * this shape. The rig reads it and nothing else, so putting a perfume, a serum
- * or a phone on the landing page tomorrow is a new config file plus a new set
- * of meshes — not a new controller.
+ * Five products assemble one after another inside one pinned scroll range,
+ * then stand together for the closing shot. Everything the rig knows about
+ * them is a value of this shape: where each product stands, when it
+ * assembles, where its parts start and end, how the camera looks at it.
+ * The rig reads the config and nothing else, so a sixth product is a new
+ * entry in `products` plus a component that draws its parts — not a change
+ * to the controller.
  */
 
 export type Vec3 = readonly [number, number, number];
 
-/** The ten meshes the sequence drives, named exactly as the GLB must name them. */
-export const PART_KEYS = [
-  "Bottle_Body",
-  "Liquid",
-  "Pump_Base",
-  "Pump_Head",
-  "Pump_Tube",
-  "Cap",
-  "Label",
-  "Logo",
-  "Inner_Component_01",
-  "Inner_Component_02",
-] as const;
+/** A curve sampled by progress: [progress, value] pairs, smoothstepped between. */
+export type Pairs = readonly (readonly [number, number])[];
 
-export type PartKey = (typeof PART_KEYS)[number];
+export type ProductId = "cream" | "tint" | "shampoo" | "mascara" | "pencil";
 
 export interface Pose {
   position: Vec3;
@@ -34,9 +26,9 @@ export interface Pose {
 }
 
 /**
- * The small movements that stop the assembly reading as ten linear tweens.
- * All of them peak mid-travel and are gone by the time the part lands, because
- * a bounce at the end of a mechanical fit is a cartoon, not a product film.
+ * The small movements that stop the assembly reading as a queue of linear
+ * tweens. All of them peak mid-travel and are gone by the time the part
+ * lands, because a bounce at the end of a mechanical fit is a cartoon.
  */
 export interface SecondaryMotion {
   /** Extra yaw, radians, peaking halfway through the travel. */
@@ -45,15 +37,17 @@ export interface SecondaryMotion {
   sway?: number;
   /** A single damped nudge along Y just after the part lands, world units. */
   settle?: number;
-  /** Never-ending slow motion, for things that are not solid: the liquid keeps
-   *  turning and rolling under its own weight for as long as it is on screen. */
+  /** Never-ending slow motion for things that are not solid: a liquid keeps
+   *  turning under its own weight for as long as it is on screen. */
   drift?: { yaw: number; roll: number };
 }
 
 export interface PartSpec {
+  /** Where the part floats before assembly, relative to the product's origin. */
   exploded: Pose;
+  /** Where it ends up, relative to the product's origin. */
   assembled: Pose;
-  /** Scroll progress window in which this part travels. */
+  /** The stretch of the product's own 0–1 progress in which the part travels. */
   window: readonly [number, number];
   ease: EaseName;
   /** Depth factor for the idle drift of the exploded stage (0 = still). */
@@ -61,71 +55,75 @@ export interface PartSpec {
   secondary?: SecondaryMotion;
   /** Parts that fill instead of flying: local scale.y runs 0 → 1 here. */
   fill?: readonly [number, number];
-  /** Parts whose geometry wraps onto the bottle: bend runs 0 → 1 here. */
+  /** Parts whose geometry wraps onto a body: bend runs 0 → 1 here. */
   bend?: readonly [number, number];
 }
 
-export interface CameraKey {
-  /** Scroll progress this key belongs to. */
-  at: number;
+export interface ProductSpec {
+  id: ProductId;
+  /** Where the finished product stands: a row on wide screens... */
+  slot: Vec3;
+  /** ...and a tight cluster with depth on phones, where a row would not fit. */
+  slotCompact: Vec3;
+  /** The stretch of the page's 0–1 progress in which this product assembles. */
+  window: readonly [number, number];
+  /** Yaw of the whole product over its own progress: engineering view first,
+   *  then the slow turn into a three-quarter. */
+  yaw: Pairs;
+  camera: {
+    /** Camera offset from the product's origin at the start of its window... */
+    from: Vec3;
+    /** ...and at the end, a touch closer: the dolly-in of a product film. */
+    to: Vec3;
+    /** Where the camera looks, relative to the product's origin. */
+    target: Vec3;
+  };
+  parts: Readonly<Record<string, PartSpec>>;
+}
+
+export interface CameraShot {
   position: Vec3;
-  /** Where the camera looks. Shifting this, rather than the model, is how the
-   *  product moves off centre to make room for the closing copy. */
   target: Vec3;
 }
 
-export interface ProductConfig {
-  /** Lifts the assembled product so its mass sits on the optical centre. */
+export interface SceneConfig {
+  /** Lifts the whole collection so its mass sits on the optical centre. */
   offset: Vec3;
-  /** Yaw of the whole model over the scroll: [progress, radians]. */
-  yaw: readonly (readonly [number, number])[];
+  /** Ground plane height in model space. */
+  ground: number;
+  products: readonly ProductSpec[];
   camera: {
     fov: number;
     fovCompact: number;
-    keys: readonly CameraKey[];
-    /** Separate framing for phones and tablets: portrait is much narrower than
-     *  it is short, so the same keys would push half the exploded view out. */
-    keysCompact: readonly CameraKey[];
+    /** The opening frame, before anything has started moving. */
+    overview: CameraShot;
+    overviewCompact: CameraShot;
+    /** The closing frame: everything standing together. */
+    lineup: CameraShot;
+    lineupCompact: CameraShot;
+    /** Progress at which the camera starts pulling back into the lineup. */
+    lineupAt: number;
     /** Mouse parallax in radians, applied on top of the look-at. */
     parallax: { x: number; y: number };
     /** Per-frame approach factor toward the target framing. */
     lerp: number;
-    /**
-     * How strictly the frame must hold every part, by progress: [progress, 0–1].
-     *
-     * At 1 the camera pulls back until nothing is cropped, which is the rule
-     * for the exploded and assembly stages. At 0 the authored camera keys are
-     * obeyed exactly, which is what a detail shot is: a deliberate crop.
-     */
-    fit: readonly (readonly [number, number])[];
   };
   /** Exploded offsets are multiplied per axis on small screens. */
   compactExplode: Vec3;
   idle: {
-    /** Vertical float amplitude of the finished hero shot, world units. */
+    /** Vertical float amplitude of the finished shot, world units. */
     float: number;
-    /** Yaw amplitude of the finished hero shot, radians. */
+    /** Yaw amplitude of the finished shot, radians. */
     yaw: number;
   };
   environment: {
-    /** Point this at a file under public/hdri to use a real studio probe
-     *  instead of the built-in softboxes. */
-    hdr: string | null;
     resolution: number;
     resolutionCompact: number;
   };
-  model: {
-    /** Point this at a file under public/models to swap in a real GLB. */
-    glb: string | null;
-    /** Draco decoder directory, served from public/. */
-    draco: string;
-  };
   shadow: {
-    /** Ground plane height in model space. */
-    y: number;
     opacity: number;
-    /** The shadow only makes sense once the product stands on the ground. */
-    window: readonly [number, number];
   };
-  parts: Readonly<Record<PartKey, PartSpec>>;
 }
+
+/** The key the rig files a part under: product id and part name. */
+export const partKey = (product: ProductId, part: string): string => `${product}/${part}`;

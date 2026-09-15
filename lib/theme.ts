@@ -13,8 +13,8 @@
 
 export type Theme = "system" | "light" | "dark";
 
-export const THEME_KEY = "hb-theme";
-export const THEME_EVENT = "hb-theme";
+export const THEME_KEY = "velve-theme";
+export const THEME_EVENT = "velve-theme";
 
 const bar = { light: "#f7f7f8", dark: "#0b0b0d" } as const;
 

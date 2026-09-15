@@ -1,591 +1,356 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mark, Wordmark } from "@/components/Brand";
-import { Bars } from "@/components/landing/Bars";
 import { LogoWall } from "@/components/landing/LogoWall";
 import { NavSpy } from "@/components/landing/NavSpy";
 import { Reveal } from "@/components/landing/Reveal";
-import { ProductSection } from "@/components/product/ProductSection";
+import { Still } from "@/components/landing/Still";
+import { ProductScrollSection } from "@/components/product/ProductScrollSection";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { asset } from "@/lib/asset";
 
 /**
  * The landing page.
  *
- * Set in the shop's own language: Fixel Display, the magenta of the sign,
- * photographs of the actual stores and the actual goods. Every number on it
- * comes from a run of the system on 6 September 2026 against the real
- * catalogue and the shop's own exports, and the page says where each one
- * came from. A figure with its method attached is the only kind worth
- * printing; "up to 40% more revenue" is what every competitor's page already
- * says, and a shop owner has read it enough times to have stopped seeing it.
+ * A beauty house's site is a promise about care, and the page makes it the
+ * way the products do: with precision. The hero is the collection taking
+ * itself apart and putting itself back together; everything below is set
+ * large and quiet, with the brand's one colour spent where it matters.
  */
 
 const description =
-  "Отвечает покупателям по реальным остаткам, считает спрос и сам заказывает у поставщиков в пределах бюджета, который задали вы.";
+  "Коллекция из пяти продуктов — крем, тинт, шампунь, тушь и карандаш. Каждая деталь на своём месте, и у каждой есть причина там находиться.";
 
 export const metadata: Metadata = {
-  title: "Hayat Beauty: ассистент магазина",
+  title: "Velvé — косметика, собранная точно",
   description,
   openGraph: {
-    title: "Hayat Beauty: ассистент магазина",
+    title: "Velvé — косметика, собранная точно",
     description,
     locale: "ru_RU",
     type: "website",
-    images: [{ url: "/brand/stores/vatan-1600.webp", width: 1600, height: 900 }],
+    images: [{ url: "/brand/og.png", width: 1200, height: 630 }],
   },
 };
 
-/* What an ordinary buyer lost over 25 simulated months on the real catalogue
- * (cmd/synth -calibrate, 6 September 2026). */
-const losses = [
-  { n: "27 920", u: "шт", l: "продаж упущено на пустой полке" },
-  { n: "61 602", u: "шт", l: "списано по сроку годности" },
-  { n: "52 068", u: "", l: "заявок поставщикам оформлено вручную" },
-  { n: "125 994", u: "", l: "чеков в истории, на которой это посчитано" },
-];
-
-/* Walk-forward backtest on the calibrated world: forecast error relative to
- * the seasonal naive base, four cuts, 21-day horizon. Below 1 beats the base. */
-const folds = [
-  { label: "13 июня", value: 0.96 },
-  { label: "4 июля", value: 0.966 },
-  { label: "25 июля", value: 0.928 },
-  { label: "15 августа", value: 0.956 },
-];
-
-/* Forecast cut on 1 August 2026, scored per SKU against the shop's own August
- * sales export (cmd/forecast -backtest -real 2026-08). */
-const bases = [
-  { label: "наивная база", value: 0.815, strong: true },
-  { label: "сезонная база", value: 0.868, strong: true },
-  { label: "скользящее среднее", value: 1.01 },
-];
-
-/* Repeat-purchase backtest (cmd/repeat -backtest): last purchase of every
- * buyer × product pair hidden, hit = within ±25% of the cycle. */
-const repeat = [
-  { label: "ассистент", value: 72.3, strong: true },
-  { label: "память продавца", value: 60.0 },
-];
-
-/* August's best sellers by the shop's export, with the catalogue's photos. */
-const shelf = [
-  { img: "althea-345", name: "Dr.Althea 345 relief cream", price: 236 },
-  { img: "boj-rice-spf", name: "Beauty of Joseon relief sun SPF50", price: 160 },
-  { img: "roundlab-birch-spf", name: "Round Lab birch juice sunscreen", price: 175 },
-  { img: "skin1004-sun-serum", name: "SKIN1004 hyalu-cica sun serum", price: 176 },
-];
-
-const guards = [
+const principles = [
   {
-    title: "Месячный бюджет",
-    body: "Кончился, и заявки копятся в очереди, а не уходят. Списание блокирует строку в базе, так что два прохода не потратят одни деньги дважды.",
+    n: "01",
+    t: "Формула",
+    d: "Каждый ингредиент решает задачу. Мы не добавляем отдушки ради запаха и цвет ради цвета.",
   },
   {
-    title: "Порог маржи",
-    body: "Позиция с маржой ниже вашего порога не заказывается, как бы хорошо она ни продавалась.",
+    n: "02",
+    t: "Форма",
+    d: "Флакон, дозатор и крышка спроектированы вместе. Ничего не течёт, не липнет и не ломается в сумке.",
   },
   {
-    title: "Потолок запаса",
-    body: "Не больше заданного числа дней спроса. Запас на год у средства со сроком 18 месяцев протухнет раньше, чем продастся.",
-  },
-  {
-    title: "Холодный старт",
-    body: "Товар, который прогнозист видел меньше 60 дней, уходит человеку на подтверждение. Автономия над моделью, которая ещё не была права, не автономия.",
+    n: "03",
+    t: "Точность",
+    d: "Дозировка активов измерена и напечатана на этикетке. «Примерно» — не единица измерения.",
   },
 ];
 
-const extras = [
+const numbers = [
+  { n: "0", l: "сульфатов, парабенов и минерального масла" },
+  { n: "5,5", l: "pH шампуня — как у здоровой кожи головы" },
+  { n: "12", l: "активных компонентов во всей коллекции" },
+  { n: "32", l: "детали в пяти продуктах, каждая на своём месте" },
+];
+
+const products = [
   {
-    t: "Фото вместо описания",
-    d: "Флакон у подруги, полка в чужом магазине, скриншот списка. Читаем этикетку в те же поля, что и каталог, и говорим, есть ли у нас это или аналог по составу.",
+    id: "cream",
+    index: "01",
+    name: "Крем",
+    latin: "Hydra Cream",
+    volume: "50 ml",
+    line: "Сорок восемь часов увлажнения. Плотная текстура, которая впитывается и не оставляет плёнки.",
+    actives: ["Ниацинамид 5%", "Церамиды NP", "Сквалан"],
+    shades: [] as string[],
   },
   {
-    t: "Голосовое сообщение",
-    d: "Человек, который не станет печатать три абзаца про свою кожу, наговорит их за двадцать секунд. Расшифровка идёт в тот же планировщик, что и текст.",
+    id: "tint",
+    index: "02",
+    name: "Тинт",
+    latin: "Lip Tint",
+    volume: "6 ml",
+    line: "Тонкий слой цвета, который держится весь день и не сушит губы.",
+    actives: ["Масло ши", "Гиалуронат", "Витамин E"],
+    shades: ["#d4234f", "#c2185b", "#e8677f", "#8e2436"],
   },
   {
-    t: "Дневник кожи",
-    d: "Уход на неделю с трекингом и без диагнозов: только то, что человек сказал о себе, и арифметика над этим.",
+    id: "shampoo",
+    index: "03",
+    name: "Шампунь",
+    latin: "Shampoo",
+    volume: "300 ml",
+    line: "Мягкое очищение при pH 5,5: без сульфатов, с пантенолом и инулином для кожи головы.",
+    actives: ["Пантенол", "Инулин", "Коко-глюкозид"],
+    shades: [] as string[],
   },
   {
-    t: "Протокол для ИИ-агентов",
-    d: "Машинная витрина: структурный фид, сессия оформления, резерв стока, мандат покупателя с потолком. Чужой ассистент может купить у вас, не открывая сайт.",
+    id: "mascara",
+    index: "04",
+    name: "Тушь",
+    latin: "Volume Mascara",
+    volume: "9 ml",
+    line: "Объём и разделение с первого слоя, без комков и осыпания к вечеру.",
+    actives: ["Пчелиный воск", "Пантенол", "Кератин"],
+    shades: ["#0d0d10"],
+  },
+  {
+    id: "pencil",
+    index: "05",
+    name: "Карандаш",
+    latin: "Eye Pencil",
+    volume: "1,2 g",
+    line: "Мягкий грифель и чёткая линия одним движением. Держится двенадцать часов.",
+    actives: ["Масло жожоба", "Воск карнаубы"],
+    shades: ["#0d0d10", "#3b2a2a", "#3d3a7a"],
   },
 ];
 
-const ratio = (v: number) => v.toFixed(2).replace(".", ",");
-const percent = (v: number) => `${v.toFixed(1).replace(".", ",")}%`;
-
-function Photo({
-  name,
-  alt,
-  width,
-  height,
-  sizes,
-  priority = false,
-}: {
-  name: string;
-  alt: string;
-  width: number;
-  height: number;
-  sizes: string;
-  priority?: boolean;
-}) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={asset(`/brand/stores/${name}-1600.webp`)}
-      srcSet={`${asset(`/brand/stores/${name}-800.webp`)} 800w, ${asset(`/brand/stores/${name}-1600.webp`)} 1600w`}
-      sizes={sizes}
-      width={width}
-      height={height}
-      alt={alt}
-      loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "auto"}
-      decoding="async"
-    />
-  );
-}
+const formula = {
+  yes: [
+    ["Ниацинамид, церамиды и сквалан", "для барьера кожи"],
+    ["Пантенол и инулин", "для волос и кожи головы"],
+    ["Масла ши и жожоба", "для губ и век"],
+    ["Растительные воски", "для стойкости"],
+  ],
+  no: [
+    ["Сульфатов SLS и SLES", "очищение мягче, кожа спокойнее"],
+    ["Парабенов", "и любых формальдегид-релизеров"],
+    ["Минерального масла и силиконов", "ничего, что просто лежит сверху"],
+    ["Тестов на животных", "ни на одном этапе"],
+  ],
+};
 
 export default function Landing() {
   return (
     <main className="lp" id="main">
-      <a className="lp-skip" href="#how">
+      <a className="lp-skip" href="#collection">
         К содержанию
       </a>
 
       <header className="lp-nav">
-        <Link href="/" className="lp-brand" aria-label="Hayat Beauty, на главную">
-          <Mark size={30} />
-          <span className="lp-brand-text">
-            <Wordmark />
-            <span className="lp-brand-sub">ассистент магазина</span>
-          </span>
+        <Link href="/" className="lp-brand" aria-label="Velvé, на главную">
+          <Mark size={30} title="" />
+          <Wordmark />
         </Link>
         <nav className="lp-nav-links" aria-label="Разделы страницы">
-          <a href="#product">Продукт</a>
-          <a href="#how">Как работает</a>
-          <a href="#safety">Рамка</a>
-          <a href="#stores">Магазины</a>
+          <a href="#collection">Коллекция</a>
+          <a href="#formula">Формула</a>
+          <a href="#partners">Партнёры</a>
           <ThemeToggle compact />
-          <Link href="/app" className="lp-btn lp-btn--primary lp-btn--sm">
-            Открыть ассистента
-          </Link>
+          <a href="#collection" className="lp-btn lp-btn--primary lp-btn--sm">
+            Смотреть коллекцию
+          </a>
         </nav>
-        <NavSpy ids={["product", "how", "safety", "stores"]} />
+        <NavSpy ids={["collection", "formula", "partners"]} />
       </header>
 
-      {/* ---- Hero: the claim on the left, the shop itself on the right ---- */}
-      <section className="lp-hero">
-        <div className="lp-hero-copy">
-          <h1 className="lp-h1 lp-in">
-            Магазин, который знает, <span className="lp-accent">что заказать и почему</span>
-          </h1>
-          <p className="lp-lede lp-in lp-in--1">
-            {description}
-          </p>
-          <div className="lp-cta-row lp-in lp-in--2">
-            <Link href="/app" className="lp-btn lp-btn--primary lp-btn--lg">
-              Открыть ассистента
-            </Link>
-            <a href="#how" className="lp-btn lp-btn--ghost lp-btn--lg">
-              Как работает
-            </a>
-          </div>
-        </div>
+      {/* ---- The hero: the collection assembles itself ---- */}
+      <ProductScrollSection />
 
-        <figure className="lp-hero-photo lp-in lp-in--1">
-          <Photo
-            name="vatan"
-            alt="Фасад магазина Hayat Beauty на улице Дехлави в Душанбе: чёрная вывеска, белые буквы и розовое кольцо HB"
-            width={1600}
-            height={900}
-            sizes="(max-width: 900px) 100vw, 44vw"
-            priority
-          />
-          <figcaption>Hayat Beauty на улице Х. Дехлави, Душанбе</figcaption>
-        </figure>
-      </section>
-
-      {/* ---- The product, taken apart and put back together ---- */}
-      <ProductSection />
-
-      {/* ---- The shelf: what is actually on it ---- */}
-      <section className="lp-brands" aria-labelledby="brands-line">
-        <p className="lp-brands-line" id="brands-line">
-          На полках трёх магазинов и онлайн-витрины: <strong>11&nbsp;032 товара</strong> от{" "}
-          <strong>455 брендов</strong>
-        </p>
-        <LogoWall />
-      </section>
-
-      {/* ---- What the ordinary buyer loses ---- */}
-      <section className="lp-band">
-        <div className="lp-band-copy">
-          <Reveal>
-            <h2 className="lp-h2">Что теряет обычный закупщик</h2>
-          </Reveal>
-          <Reveal delay={60}>
-            <p className="lp-section-lede">
-              Каталог настоящий, торговля по нему смоделирована за 25 месяцев. Так закупает
-              человек с таблицей и памятью, и вот что у него выходит.
-            </p>
-          </Reveal>
-          <Reveal delay={120} as="dl" className="lp-stats">
-            {losses.map((s) => (
-              <div className="lp-stat" key={s.l}>
-                <dt className="lp-stat-l">{s.l}</dt>
-                <dd>
-                  <span className="lp-stat-n tabular">{s.n}</span>
-                  {s.u && <span className="lp-stat-u">{s.u}</span>}
-                </dd>
-              </div>
-            ))}
-          </Reveal>
-        </div>
-        <Reveal delay={90} as="figure" className="lp-band-photo">
-          <Photo
-            name="shelves"
-            alt="Полки магазина Hayat Beauty: шампуни и уход за волосами на красной стене"
-            width={1600}
-            height={900}
-            sizes="(max-width: 900px) 100vw, 44vw"
-          />
-          <figcaption>Полка в магазине на Дехлави</figcaption>
-        </Reveal>
-      </section>
-
-      {/* ---- The four heads ---- */}
-      <section className="lp-section" id="how">
+      {/* ---- Manifesto ---- */}
+      <section className="lp-section lp-manifesto" id="about">
         <Reveal>
-          <h2 className="lp-h2">Четыре головы одной системы</h2>
+          <p className="lp-eyebrow">Манифест</p>
         </Reveal>
         <Reveal delay={60}>
-          <p className="lp-section-lede">
-            Снабженец вычитает из прогноза, прогноз ест историю чеков, аналитик пересказывает
-            то, что уже посчитано. Ни одна не может врать незаметно для остальных.
+          <h2 className="lp-display">
+            Мы не добавляем ничего, <span className="lp-accent">что не можем объяснить.</span>
+          </h2>
+        </Reveal>
+        <Reveal delay={120}>
+          <p className="lp-section-lede lp-manifesto-lede">
+            Коллекция Velvé — пять продуктов, собранных из тридцати двух деталей. У каждой детали
+            есть причина быть там, где она есть. У каждого ингредиента — тоже.
           </p>
         </Reveal>
-
-        <div className="lp-bento">
-          <Reveal as="article" className="lp-tile lp-tile--wide">
-            <h3 className="lp-tile-title">Консультант</h3>
-            <p className="lp-tile-line">Отвечает по реальным остаткам</p>
-            <p className="lp-tile-body">
-              Покупатель пишет «нужен крем для сухой кожи до 150 сомони», присылает фото флакона
-              или голосовое. Ассистент собирает корзину из того, что действительно есть на полке,
-              а замену по составу называет заменой.
-            </p>
-            <ul className="lp-shelf" aria-label="Лучшие позиции августа по выгрузке магазина">
-              {shelf.map((p) => (
-                <li className="lp-shelf-item" key={p.img}>
-                  <span className="lp-shelf-photo">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={asset(`/brand/products/${p.img}.webp`)}
-                      alt={p.name}
-                      width={520}
-                      height={700}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </span>
-                  <span className="lp-shelf-name">{p.name}</span>
-                  <span className="lp-shelf-price tabular">{p.price} TJS</span>
-                </li>
-              ))}
-            </ul>
-            <p className="lp-tile-note">Лучшие позиции августа по выгрузке магазина</p>
-          </Reveal>
-
-          <Reveal delay={80} as="article" className="lp-tile lp-tile--chart">
-            <h3 className="lp-tile-title">Прогнозист</h3>
-            <p className="lp-tile-line">Считает спрос, а не угадывает</p>
-            <p className="lp-tile-body">
-              Сезонность, повторные покупки, редкий спрос. Три четверти каталога продаётся по
-              несколько штук в месяц, и для таких рядов здесь отдельная математика. Её точность
-              измерена, а не заявлена.
-            </p>
-            <Bars
-              items={folds}
-              max={1.1}
-              format={ratio}
-              reference={{ value: 1, label: "уровень сезонной базы" }}
-              caption="Ошибка прогноза на четырёх срезах, меньше единицы значит лучше базы."
-            />
-          </Reveal>
-
-          <Reveal delay={160} as="article" className="lp-tile lp-tile--brand">
-            <h3 className="lp-tile-title">Снабженец</h3>
-            <p className="lp-tile-line">Сам оформляет заявку поставщику</p>
-            <p className="lp-tile-body">
-              Видит дыру в остатках, считает доходность и сравнивает поставщиков по итоговой
-              стоимости, а не по прайсу. Дешёвый поставщик с трёхнедельным сроком и восемью
-              процентами недопоставок часто выходит дороже быстрого.
-            </p>
-          </Reveal>
-
-          <Reveal delay={240} as="article" className="lp-tile lp-tile--tint">
-            <h3 className="lp-tile-title">Аналитик</h3>
-            <p className="lp-tile-line">Пишет вам каждое утро</p>
-            <p className="lp-tile-body">
-              Короткий отчёт в Telegram к открытию магазина. Причина каждого заказа хранится
-              вместе с заказом, а не сочиняется задним числом.
-            </p>
-            <ul className="lp-digest" aria-label="Что есть в утреннем отчёте">
-              <li>
-                <strong>Что заказано и почему</strong>
-                <span>каждая заявка со своей причиной</span>
-              </li>
-              <li>
-                <strong>Сколько денег осталось</strong>
-                <span>остаток месячного бюджета</span>
-              </li>
-              <li>
-                <strong>Что горит по сроку</strong>
-                <span>партии, которые не успеют продаться</span>
-              </li>
-              <li>
-                <strong>Что стоит уценить</strong>
-                <span>и на сколько, чтобы успеть</span>
-              </li>
-            </ul>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ---- Proof against a real month ---- */}
-      <section className="lp-section lp-proof">
-        <div className="lp-proof-copy">
-          <Reveal>
-            <h2 className="lp-h2">Проверено на реальном августе</h2>
-          </Reveal>
-          <Reveal delay={60}>
-            <p className="lp-section-lede">
-              Магазин прислал выгрузку онлайн-заказов за июль и август: 2&nbsp;380 заказов и
-              продажи каждой позиции. Прогноз, сделанный 1 августа, сверили с фактом по
-              9&nbsp;076 позициям.
-            </p>
-          </Reveal>
-          <Reveal delay={120} as="ul" className="lp-facts">
-            <li>
-              <span className="lp-fact-n tabular">0,87</span>
-              <span className="lp-fact-l">ошибка к сезонной базе: на 13% лучше того, что дал бы прошлый год</span>
+        <Reveal delay={180} as="ul" className="lp-principles">
+          {principles.map((p) => (
+            <li className="lp-principle" key={p.n}>
+              <span className="lp-principle-n">{p.n}</span>
+              <h3>{p.t}</h3>
+              <p>{p.d}</p>
             </li>
-            <li>
-              <span className="lp-fact-n tabular">+34%</span>
-              <span className="lp-fact-l">
-                объём завышен: 2&nbsp;151 штука в прогнозе против 1&nbsp;602 проданных. Форму
-                спроса модель угадывает, масштаб пока нет
-              </span>
-            </li>
-            <li>
-              <span className="lp-fact-n tabular">72%</span>
-              <span className="lp-fact-l">напоминаний о повторной покупке пришли в срок, против 60% у памяти продавца</span>
-            </li>
-          </Reveal>
-        </div>
-        <div className="lp-proof-charts">
-          <Reveal delay={90}>
-            <Bars
-              items={bases}
-              max={1.1}
-              format={ratio}
-              reference={{ value: 1, label: "уровень базы" }}
-              caption="Ошибка прогноза относительно трёх простых баз за август 2026."
-            />
-          </Reveal>
-          <Reveal delay={150}>
-            <Bars
-              items={repeat}
-              max={100}
-              format={percent}
-              caption="Доля напоминаний, попавших в ±25% цикла покупки."
-            />
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ---- Arithmetic versus the model ---- */}
-      <section className="lp-section lp-section--tint">
-        <Reveal>
-          <h2 className="lp-h2">Числа считает арифметика. Объясняет модель.</h2>
-        </Reveal>
-        <Reveal delay={60}>
-          <p className="lp-section-lede">
-            Языковая модель не считает, она правдоподобно продолжает текст. В консультанте это
-            терпимо. В заявке на 40&nbsp;000 сомони уже нет.
-          </p>
-        </Reveal>
-
-        <Reveal delay={120} className="lp-ledger">
-          <div className="lp-ledger-col">
-            <h3>Считает код</h3>
-            <ul>
-              <li>Спрос, сезонность, страховой запас</li>
-              <li>Точка перезаказа и целевой уровень</li>
-              <li>Доходность и выбор поставщика</li>
-              <li>Проверка бюджета и всех границ</li>
-            </ul>
-            <p className="lp-ledger-note">
-              Воспроизводимо. Проверяется бэктестом. Восстанавливается через год.
-            </p>
-          </div>
-          <div className="lp-ledger-col">
-            <h3>Понимает и объясняет модель</h3>
-            <ul>
-              <li>Разбор запроса покупателя</li>
-              <li>Чтение этикетки с фотографии</li>
-              <li>Расшифровка голосового сообщения</li>
-              <li>Пересказ уже посчитанного решения</li>
-            </ul>
-            <p className="lp-ledger-note">
-              У каждого числа есть паспорт. Модель его пересказывает, а не сочиняет.
-            </p>
-          </div>
+          ))}
         </Reveal>
       </section>
 
-      {/* ---- The frame ---- */}
-      <section className="lp-section lp-safety" id="safety">
-        <div className="lp-safety-head">
-          <Reveal>
-            <h2 className="lp-h2">Автопилот: рамка, а не свобода</h2>
-          </Reveal>
-          <Reveal delay={60}>
-            <p className="lp-section-lede">
-              Автопилот самолёта не решает, куда лететь. Он держит курс, а на границе отдаёт
-              управление. Внутри рамки агент автономен, на границе останавливается и пишет вам.
-            </p>
-          </Reveal>
-        </div>
-        <Reveal delay={120} as="dl" className="lp-guards">
-          {guards.map((g) => (
-            <div className="lp-guard" key={g.title}>
-              <dt>{g.title}</dt>
-              <dd>{g.body}</dd>
+      {/* ---- Numbers ---- */}
+      <section className="lp-numbers" aria-label="Коллекция в цифрах">
+        <Reveal as="dl" className="lp-numbers-grid">
+          {numbers.map((s) => (
+            <div className="lp-number" key={s.l}>
+              <dt className="lp-number-l">{s.l}</dt>
+              <dd className="lp-number-n">{s.n}</dd>
             </div>
           ))}
         </Reveal>
       </section>
 
-      <aside className="lp-quote" aria-label="Правило остановки">
+      {/* ---- Collection ---- */}
+      <section className="lp-section lp-collection" id="collection">
+        <div className="lp-section-head">
+          <Reveal>
+            <p className="lp-eyebrow">Коллекция 2026</p>
+          </Reveal>
+          <Reveal delay={60}>
+            <h2 className="lp-h2">Пять продуктов. Одна система.</h2>
+          </Reveal>
+          <Reveal delay={120}>
+            <p className="lp-section-lede">
+              Уход и макияж, которые не спорят друг с другом: один pH, одни принципы состава, одна
+              полка в ванной.
+            </p>
+          </Reveal>
+        </div>
+
+        <ol className="lp-products">
+          {products.map((p, i) => (
+            <Reveal key={p.id} delay={i * 60} as="li" className={`lp-product lp-product--${p.id}`}>
+              <figure className="lp-product-visual" data-index={p.index}>
+                <Still id={p.id} alt={`${p.name} Velvé ${p.latin}`} />
+              </figure>
+              <div className="lp-product-body">
+                <span className="lp-product-index">{p.index}</span>
+                <h3 className="lp-product-name">
+                  {p.name} <span className="lp-product-latin">{p.latin}</span>
+                </h3>
+                <p className="lp-product-line">{p.line}</p>
+                <ul className="lp-product-actives" aria-label="Активные компоненты">
+                  {p.actives.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+                <div className="lp-product-meta">
+                  <span className="tabular">{p.volume}</span>
+                  {p.shades.length > 0 && (
+                    <span className="lp-shades" aria-label={`Оттенков: ${p.shades.length}`}>
+                      {p.shades.map((s) => (
+                        <span className="lp-shade" key={s} style={{ background: s }} />
+                      ))}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </ol>
+      </section>
+
+      {/* ---- Formula ---- */}
+      <section className="lp-section lp-section--tint" id="formula">
+        <div className="lp-section-head">
+          <Reveal>
+            <p className="lp-eyebrow">Формула</p>
+          </Reveal>
+          <Reveal delay={60}>
+            <h2 className="lp-h2">Что внутри. И чего нет.</h2>
+          </Reveal>
+          <Reveal delay={120}>
+            <p className="lp-section-lede">
+              Состав каждого продукта умещается на его этикетке крупным шрифтом. Это не
+              ограничение, это правило.
+            </p>
+          </Reveal>
+        </div>
+
+        <Reveal delay={160} className="lp-ledger">
+          <div className="lp-ledger-col">
+            <h3>Есть</h3>
+            <ul>
+              {formula.yes.map(([a, b]) => (
+                <li key={a}>
+                  <strong>{a}</strong> <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="lp-ledger-col lp-ledger-col--no">
+            <h3>Нет</h3>
+            <ul>
+              {formula.no.map(([a, b]) => (
+                <li key={a}>
+                  <strong>{a}</strong> <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ---- The one full-bleed block of colour ---- */}
+      <aside className="lp-quote" aria-label="Принцип">
         <Reveal className="lp-quote-inner">
-          <p className="lp-quote-line">Тормоз легче газа.</p>
+          <p className="lp-quote-line">Меньше, но точнее.</p>
           <p className="lp-quote-body">
-            «Стоп» срабатывает от первого слова любого оператора, без подтверждения. Повысить
-            бюджет может только владелец, с подтверждением и записью в журнал.
+            В каждом продукте ровно столько компонентов, сколько нужно, чтобы он работал. Ни
+            одного — ради длинного списка на упаковке.
           </p>
         </Reveal>
       </aside>
 
-      {/* ---- The stores ---- */}
-      <section className="lp-section lp-stores" id="stores">
-        <Reveal>
-          <h2 className="lp-h2">Три магазина и онлайн-витрина</h2>
-        </Reveal>
-        <Reveal delay={60}>
-          <p className="lp-section-lede">
-            Ассистент собирает корзину по остаткам онлайн-витрины hbshop.tj. Заказ можно
-            забрать в любом из трёх магазинов сети, часы работы ниже.
-          </p>
-        </Reveal>
-        <div className="lp-store-grid">
-          <Reveal as="figure" className="lp-store lp-store--big">
-            <Photo
-              name="siema"
-              alt="Магазин Hayat Beauty в торговом центре Сиема Молл: витрина с неоновой розовой рамкой"
-              width={1600}
-              height={900}
-              sizes="(max-width: 900px) 100vw, 56vw"
-            />
-            <figcaption>
-              <strong>Сиема Молл</strong>
-              <span>с 10:00 до 22:00, ежедневно</span>
-            </figcaption>
+      {/* ---- Partners ---- */}
+      <section className="lp-partners" id="partners" aria-labelledby="partners-title">
+        <div className="lp-partners-head">
+          <Reveal>
+            <p className="lp-eyebrow">Партнёры</p>
           </Reveal>
-          <Reveal delay={80} as="figure" className="lp-store">
-            <Photo
-              name="vatan"
-              alt="Магазин Hayat Beauty на улице Дехлави"
-              width={1600}
-              height={900}
-              sizes="(max-width: 900px) 100vw, 36vw"
-            />
-            <figcaption>
-              <strong>Ватан, ул. Х. Дехлави, 2</strong>
-              <span>с 10:00 до 22:00, ежедневно</span>
-            </figcaption>
+          <Reveal delay={60}>
+            <h2 className="lp-h2" id="partners-title">
+              В одной витрине с брендами, которым доверяют
+            </h2>
           </Reveal>
-          <Reveal delay={160} as="figure" className="lp-store">
-            <Photo
-              name="sadbarg"
-              alt="Вывеска Hayat Beauty в торговом центре Садбарг"
-              width={1600}
-              height={900}
-              sizes="(max-width: 900px) 100vw, 36vw"
-            />
-            <figcaption>
-              <strong>ТЦ Садбарг, 2-й этаж</strong>
-              <span>с 9:30 до 18:00, с понедельника по субботу</span>
-            </figcaption>
+          <Reveal delay={120}>
+            <p className="lp-section-lede">
+              От корейского ухода до французской аптеки: коллекция Velvé стоит рядом с теми, кого
+              выбирают за состав, а не за упаковку.
+            </p>
           </Reveal>
         </div>
-      </section>
-
-      {/* ---- What else ---- */}
-      <section className="lp-section lp-extras-wrap">
-        <Reveal>
-          <h2 className="lp-h2">И ещё</h2>
-        </Reveal>
-        <div className="lp-extras">
-          {extras.map((e, i) => (
-            <Reveal key={e.t} delay={i * 70} as="article" className="lp-extra">
-              <h3>{e.t}</h3>
-              <p>{e.d}</p>
-            </Reveal>
-          ))}
-        </div>
+        <LogoWall />
       </section>
 
       {/* ---- Close ---- */}
       <section className="lp-final">
         <Reveal>
-          <h2 className="lp-h2">Начните с теневого режима</h2>
+          <p className="lp-eyebrow">Осень 2026</p>
         </Reveal>
-        <Reveal delay={70}>
+        <Reveal delay={60}>
+          <h2 className="lp-display">Увидеть вживую.</h2>
+        </Reveal>
+        <Reveal delay={120}>
           <p className="lp-section-lede">
-            Подключите каталог, задайте бюджет и пороги. Две недели агент решает всё, но ничего
-            не отправляет. Включите его, когда согласитесь с его решениями.
+            Коллекция выходит осенью 2026 года. Партнёрам и дистрибьюторам мы показываем её
+            первыми.
           </p>
         </Reveal>
-        <Reveal delay={140}>
-          <Link href="/app" className="lp-btn lp-btn--primary lp-btn--lg">
-            Открыть ассистента
-          </Link>
+        <Reveal delay={180} className="lp-cta-row">
+          <a href="mailto:hello@velve.example" className="lp-btn lp-btn--primary lp-btn--lg">
+            Написать нам
+          </a>
+          <a href="#hero" className="lp-btn lp-btn--ghost lp-btn--lg">
+            Смотреть ещё раз
+          </a>
         </Reveal>
       </section>
 
       <footer className="lp-footer">
         <div className="lp-footer-brand">
-          <Mark size={24} />
+          <Mark size={24} title="" />
           <Wordmark />
+          <span className="lp-footer-tagline">Косметика, собранная точно.</span>
         </div>
-        <address className="lp-footer-address">
-          ул. Х. Дехлави, 2, Душанбе
-          <br />
-          <a href="tel:+992940909009">+992 94 090 90 09</a>
-          <br />
-          <a href="https://hbshop.tj" rel="noopener">
-            hbshop.tj
-          </a>
-        </address>
+        <nav className="lp-footer-links" aria-label="Разделы">
+          <a href="#collection">Коллекция</a>
+          <a href="#formula">Формула</a>
+          <a href="#partners">Партнёры</a>
+        </nav>
         <p className="lp-footer-note">
-          Цифры на странице получены на симуляции по реальному каталогу и на выгрузках магазина
-          за июль и август 2026 года. Ассистент не ставит диагнозов и не даёт медицинских
-          рекомендаций.
+          © 2026 Velvé. Сайт-презентация: продукты и составы носят демонстрационный характер.
         </p>
       </footer>
     </main>

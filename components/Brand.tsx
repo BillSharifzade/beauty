@@ -1,18 +1,18 @@
 /**
  * The mark and the wordmark, drawn once.
  *
- * Hayat Beauty's monogram is a ring broken into three arcs around the letters
- * HB, on the brand's magenta. It is redrawn here as vector rather than dropped
- * in as the shop's PNG so it stays crisp at 24px in a sidebar and at 96px on a
- * sign-in card, takes the current theme's beam, and never ships a raster
- * nobody can recolour. The letters are strokes on purpose: a monoline HB reads
- * at any size, where the shop's own serifed H needs 40px to survive.
+ * Velvé's monogram is two petals meeting at their stems, which is a V when
+ * read as letters and a flower when read as a picture, on the brand's
+ * magenta tile. It is drawn as vector rather than dropped in as a PNG so it
+ * stays crisp at 24px in a bar and at 96px on a card, and the same artwork
+ * lives in public/brand/mark.svg for the favicon and public/brand/monogram.svg
+ * for the products in the 3D scene.
  */
 
 export function Mark({
   size = 28,
   className,
-  title = "Hayat Beauty",
+  title = "Velvé",
 }: {
   size?: number;
   className?: string;
@@ -26,59 +26,17 @@ export function Mark({
       viewBox="0 0 64 64"
       role="img"
       aria-label={title}
+      aria-hidden={title === "" ? true : undefined}
     >
       {/* Flat brand pink: a gradient reads as generated, a colour reads as a brand. */}
       <rect width="64" height="64" rx="18" fill="#f400a1" />
-      {/* Three arcs. A full ring reads as a badge; the gaps are the brand. */}
-      <circle
-        cx="32"
-        cy="32"
-        r="24.5"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray="40 11.3"
-        transform="rotate(-100 32 32)"
-      />
-      <path
-        d="M20 23v18M20 32h11M31 23v18M38 23v18M38 23h6a4 4 0 0 1 0 8h-6M38 31h7a4.6 4.6 0 0 1 0 9.2h-7"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="4.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M32 47C22 42 15 29 19.5 17.5C28 23 34 36 32 47Z" fill="#fff" />
+      <path d="M32 47C42 42 49 29 44.5 17.5C36 23 30 36 32 47Z" fill="#fff" fillOpacity=".8" />
     </svg>
   );
 }
 
-/** «HAYAT BEAUTY», set the way the shop sets it: wide, upright, all caps. */
+/** «VELVÉ», set the way the labels set it: serif capitals, wide. */
 export function Wordmark({ className }: { className?: string }) {
-  return <span className={["wordmark", className ?? ""].join(" ").trim()}>Hayat Beauty</span>;
-}
-
-/** The mark beside the wordmark — the lockup used at the top of every shell.
- *  `sub` names the surface under the wordmark: «ассистент» in the chat, «панель
- *  магазина» in the admin, so the two shells are the one brand, not two apps. */
-export function Brand({
-  size = 28,
-  compact = false,
-  sub = "ассистент",
-}: {
-  size?: number;
-  compact?: boolean;
-  sub?: string;
-}) {
-  return (
-    <span className="brand" aria-label="Hayat Beauty">
-      <Mark size={size} className="brand-mark" title="" />
-      {!compact && (
-        <span className="brand-text">
-          <Wordmark />
-          <span className="brand-sub">{sub}</span>
-        </span>
-      )}
-    </span>
-  );
+  return <span className={["wordmark", className ?? ""].join(" ").trim()}>Velvé</span>;
 }

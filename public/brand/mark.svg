@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Velvé">
+  <rect width="64" height="64" rx="18" fill="#f400a1"/>
+  <path d="M32 47C22 42 15 29 19.5 17.5C28 23 34 36 32 47Z" fill="#fff"/>
+  <path d="M32 47C42 42 49 29 44.5 17.5C36 23 30 36 32 47Z" fill="#fff" fill-opacity=".8"/>
+</svg>

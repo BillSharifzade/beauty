@@ -1,11 +1,16 @@
-# Hayat Beauty — landing
+# Velvé — landing
 
-The presentation landing page of the Hayat Beauty shop assistant, published on
-GitHub Pages: https://billsharifzade.github.io/beauty/
+A presentation site for a beauty brand, published on GitHub Pages:
+https://billsharifzade.github.io/beauty/
 
-Only the landing lives here. The assistant itself (chat, skin diary, admin,
-backend) stays in the main project; the "Открыть ассистента" buttons point at
-its `/app` route and are not served by this site.
+The page is one long scroll. Its hero is a pinned 3D sequence in which the
+five products of the collection — cream, tint, shampoo, mascara and pencil —
+assemble themselves out of thirty-two parts as the reader scrolls, then stand
+together for the closing shot. Everything below it is static: manifesto,
+numbers, the collection, the formula, partners, a close.
+
+The brand is fictional; the partner logos under `public/brand/logos` are real
+brands shown as a "sold alongside" wall.
 
 ## Run locally
 
@@ -20,3 +25,28 @@ Every push to `main` builds a static export (`next build`, `output: "export"`)
 and publishes `out/` through the workflow in `.github/workflows/pages.yml`.
 The site is served under `/beauty`, set as `basePath` in `next.config.ts`;
 build with `BASE_PATH=""` for a root-hosted copy.
+
+## Where things are
+
+| Path | What |
+| --- | --- |
+| `app/page.tsx` | the page and all of its copy |
+| `app/landing.css`, `app/product.css` | the page's styles and the hero's |
+| `components/product/` | the 3D hero, see its own README |
+| `components/landing/` | reveal-on-scroll, nav spy, the logo wall |
+| `public/brand/` | mark, icons, poster, product stills, partner logos |
+
+## Rendering the stills
+
+The product cards, the no-WebGL poster and the OpenGraph image are renders of
+the same 3D scene, taken with `scripts/stills.mjs` from a running dev server:
+
+```sh
+npm run dev
+node scripts/stills.mjs      # writes public/brand/stills/*.webp, poster.webp, og.png
+```
+
+The script drives Google Chrome headless through `puppeteer-core` (installed
+on demand into `scripts/`), opening the page with `?still=<product|lineup>`,
+which the hero section reads to render one authored frame with the chrome
+hidden.

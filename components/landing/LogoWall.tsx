@@ -1,9 +1,9 @@
 import { asset } from "@/lib/asset";
 
 /**
- * The brands on the shelf, as the shop draws them.
+ * The partner brands, as they draw themselves.
  *
- * These are the shop's own brand tiles from hbshop.tj, vendored under
+ * These are the brands' own tiles, vendored under
  * public/brand/logos so the page depends on nothing but the checkout. The
  * wall is logos and nothing else: no country, no category, no count under
  * each one. The row scrolls once, slowly, because the point is breadth; the

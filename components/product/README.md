@@ -1,238 +1,82 @@
-# Пиннированная сцена сборки продукта
+# The hero: a pinned assembly of the collection
 
-Секция `#product` на лендинге: шесть экранов прокрутки, внутри которых один экран
-стоит на месте, а флакон шампуня Hayat Beauty собирается из десяти деталей. Всё
-поведение — чистая функция одного числа: прогресса прокрутки от 0 до 1.
+Section `#hero` on the landing: nine screens of scrolling, inside which one
+screen stays still while five products assemble themselves from thirty-two
+parts and then stand together. Everything is a pure function of one number,
+the scroll progress from 0 to 1.
 
 ```
 components/product/
-  ProductSection.tsx        клиентская обёртка, next/dynamic ssr:false
-  ProductScrollSection.tsx  сама секция: пин, загрузчик, фолбэки
-  ProductScene.tsx          <Canvas>, риг (единственный useFrame)
-  ProductModel.tsx          выбор источника деталей: GLB или процедурная модель
-  Lighting.tsx              студия из Lightformer + анимируемые источники
-  ScrollController.ts       GSAP-таймлайн и хранилище прогресса
-  HeroText.tsx              подписи этапов и финальный блок
-  easing.ts                 кривые, на которые ссылается конфиг
-  handles.ts                мостик между моделью и ригом
-  hooks.ts                  reduced motion, WebGL, узкий экран
+  ProductScrollSection.tsx  the section: pin, loader, fallbacks, still mode
+  ProductScene.tsx          <Canvas> and the rig (the only useFrame)
+  Collection.tsx            the five products under their named groups
+  Copy.tsx                  the opening statement, captions, the close
+  Lighting.tsx              studio from Lightformers + the animated lights
+  ScrollController.ts       GSAP timeline and the progress store
+  easing.ts                 curves the config refers to by name
+  handles.ts                the bridge between the models and the rig
+  hooks.ts                  reduced motion, WebGL, narrow screen, mounted
   config/
-    types.ts                контракт «продукт → риг»
-    shampoo.ts              сам шампунь: позы, окна, камера, свет, тени
+    types.ts                the contract «collection → rig»
+    products.ts             the five products: poses, windows, camera, slots
   parts/
-    ProceduralShampoo.tsx   модель, построенная в коде (по умолчанию)
-    GltfProduct.tsx         та же модель, загруженная из GLB
-    Part.tsx                одна именованная деталь
-    geometry.ts             профили лате и гнущаяся полоса этикетки
-    textures.ts             этикетка, знак бренда, карта неровностей
+    assets.ts               geometry, materials, labels, the mark — built once
+    geometry.ts             lathe profiles and the bendable label strip
+    materials.ts            one set of finishes shared by every product
+    textures.ts             the printed labels, noise map, mark loader
+    Part.tsx                one named part of a product
+    Cream.tsx … Pencil.tsx  the products, each a list of parts and finishes
 ```
 
-Стили — `app/product.css`, подключён в `app/layout.tsx` рядом с остальными.
+Styles are in `app/product.css`.
 
-## Как поменять продукт
+## How the sequence is built
 
-Всё, что риг знает о шампуне, лежит в `config/shampoo.ts`. Чтобы поставить на
-это место духи, сыворотку или телефон, нужен новый файл конфигурации того же
-типа (`config/types.ts`) и новый набор мешей. Контроллер не трогается.
+`config/products.ts` describes each product: where it stands (`slot` on wide
+screens, `slotCompact` on phones), when it assembles (`window`, a stretch of
+the page's progress), how it turns (`yaw`), how the camera looks at it, and
+its parts. Every part has an `exploded` and an `assembled` pose relative to
+the product's origin, a `window` inside the product's own 0–1 progress, an
+easing, and optional secondary motion. Parts that fill (`fill`) scale in y
+from a bottom pivot; labels (`bend`) wrap onto their body.
 
-Для каждой детали конфиг задаёт:
+The camera's path is derived, not authored: an overview, then for each
+product a shot at the start of its window and a closer one at the end, then
+the lineup. Between keys it glides; inside a window it dollies in. A measured
+fit pushes the camera back whenever the shot would crop a part, so 1440×900,
+1366×768 and a 390-wide phone are all safe from the same numbers.
 
-* `exploded` и `assembled` — позиция, поворот, масштаб;
-* `window` — отрезок прогресса, на котором деталь летит;
-* `ease` — имя кривой из `easing.ts` (`signature` — это
-  `cubic-bezier(0.65, 0, 0.35, 1)` из спецификации);
-* `parallax` — насколько деталь дрейфует на стадии разлёта (0–10%);
-* `secondary` — доворот в полёте, покачивание, осадка после посадки,
-  бесконечный медленный дрейф (только у жидкости);
-* `fill` — для деталей, которые не летят, а наполняются (`scale.y` 0 → 1);
-* `bend` — для деталей, которые оборачиваются на корпус (этикетка).
+To add a product: a new entry in `products`, a component under `parts/` that
+draws its parts with `<Part product="…" id="…">`, a line in `Collection.tsx`,
+a caption in `Copy.tsx`, and a card on the page.
 
-Мобильный разлёт — `compactExplode`: множитель по каждой оси. Отдельного
-конфига для телефонов нет и не нужно: камера сама считает, какой объём ей
-надо удержать, и отъезжает, если кадр не вмещает разлёт.
+## Performance
 
-### Кадрирование считается, а не подбирается
+* One `useFrame` for the whole section. Progress is a mutable field, not
+  React state: a value that changes every frame must never cause a render.
+* One set of materials for all five products, built once in `assets.ts`.
+* One transparent surface per product (its glass); everything inside has
+  transmission exactly zero, which is a requirement of the engine rather than
+  a choice — the transmission pass draws only opaque objects.
+* The mascara brush is one instanced draw call of twenty-six discs.
+* The render loop stops (`frameloop="demand"`) while the pinned frame is off
+  screen and under reduced motion.
+* `dpr` [1, 1.6] on desktop and [1, 1.25] on phones, `PerformanceMonitor` and
+  `AdaptiveDpr`, half the lathe segments and a smaller noise map on phones,
+  directional shadows off there, `transmissionResolutionScale` 0.5.
 
-Каждый кадр риг обновляет мировые матрицы, читает настоящие позиции и
-настоящие габаритные ящики деталей и выводит из них дистанцию, на которой в
-кадр помещается всё. Вылет детали считается по каждому направлению отдельно, а
-не как радиус: у жидкости пивот в дне столба, и симметричная половина высоты
-заставила бы камеру резервировать под флаконом пустое место высотой во флакон. Поэтому 1440×900, 1366×768, планшет и телефон 390×844
-безопасны без трёх наборов ключей камеры. Полоса страницы сверху учтена:
-верхняя половина кадра считается короче на её высоту, иначе дозатор паркуется
-под шапкой.
+## Fallbacks
 
-Строгость задаётся `camera.fit` — список `[прогресс, 0…1]`. Единица значит «ни
-одна деталь не выходит за кадр»; ноль значит «слушайся ключей камеры буквально».
-Ноль стоит на 66–78%: приближение к дозатору — это осознанная обрезка, а не
-ошибка. Разлёт и финальный кадр стоят на единице.
-
-## Подключение настоящей GLB-модели
-
-По умолчанию `model.glb` равен `null`, и флакон строится процедурно. Чтобы
-подставить модель:
-
-1. Положите файл в `public/models/shampoo.glb`.
-2. В `config/shampoo.ts` укажите `model: { glb: "/models/shampoo.glb", draco: "/draco/" }`.
-
-Больше ничего менять не нужно. Если файл не загрузится, `ModelBoundary`
-поймает ошибку, напишет warn в консоль и вернёт процедурный флакон — лендинг
-не должен ломаться из-за переименованного файла.
-
-### Что должно быть внутри GLB
-
-Ровно десять именованных объектов. Имена регистрозависимые и должны совпадать
-буква в букву:
-
-| Имя | Что это |
+| Condition | What happens |
 | --- | --- |
-| `Bottle_Body` | корпус, прозрачный пластик |
-| `Liquid` | объём жидкости внутри |
-| `Cap` | цветная закатка на горловине |
-| `Pump_Base` | плечо дозатора |
-| `Pump_Head` | шток с носиком |
-| `Pump_Tube` | трубка до дна |
-| `Label` | этикетка |
-| `Logo` | знак бренда |
-| `Inner_Component_01` | опора трубки на дне |
-| `Inner_Component_02` | кольцо на плече |
+| `prefers-reduced-motion: reduce` | no pin, no assembly: one screen with the finished collection, the opening statement and the buttons |
+| No WebGL | no canvas at all; `public/brand/poster.webp` and the same copy |
+| No JavaScript | the server-rendered heading and copy over the poster |
+| No 2D context for textures | labels and the mark are skipped, the products remain |
 
-Требования к геометрии:
+## Stills
 
-* **Единицы.** Собранный флакон стоит от `y = -0.75` до `y = 1.21`, то есть
-  примерно два условных «дециметра» в высоту. Экспортируйте в метрах и
-  масштабируйте объект так, чтобы высота получилась ≈ 1.96.
-* **Ориентация.** Ось флакона — `+Y`, лицевая сторона (этикетка) смотрит в
-  `+Z`, носик дозатора уходит в `−X`.
-* **Пивоты.** У каждой детали пивот в центре её габаритного ящика.
-  **Единственное исключение — `Liquid`:** её пивот в центре *дна* столба
-  жидкости, потому что риг наполняет объём через `scale.y`. Если поставить
-  пивот в центр, жидкость будет расти в обе стороны и вылезать сквозь дно.
-* **Трансформации применены.** Никаких остаточных поворотов и масштабов на
-  объектах: риг пишет `position`, `rotation` и `scale` целиком.
-* **Материалы.** Риг материалы не трогает — они берутся из файла. Для корпуса
-  используйте `KHR_materials_transmission` с `ior ≈ 1.47` и заметной
-  `thickness`; жидкость делайте **непрозрачной**. Это не упрощение: экранная
-  аппроксимация прозрачности в three.js рисует сквозь стекло только
-  непрозрачные объекты, поэтому полупрозрачная жидкость за стенкой флакона
-  просто исчезнет. Густой шампунь и в жизни непрозрачен.
-* **Изгиб этикетки.** Деформация `bend` есть только у процедурной модели: она
-  перестраивает вершины полосы. Меш из GLB прилетит на место, но не будет
-  оборачиваться. Если изгиб нужен, зарегистрируйте свою функцию в
-  `handles.deformers` по ключу `Label`.
-
-### Подготовка в Blender
-
-1. Смоделируйте флакон и **разделите его на отдельные объекты** (`P → By
-   Loose Parts` или вручную) строго по списку выше.
-2. Переименуйте объекты в аутлайнере ровно так, как в таблице. Имя объекта,
-   а не меша, — экспортёр пишет в узел glTF имя объекта.
-3. Для каждой детали: `Object → Set Origin → Origin to Geometry (Bounds
-   Center)`. Для `Liquid` вместо этого поставьте 3D-курсор в центр дна
-   (`Shift+S`) и `Origin to 3D Cursor`.
-4. Соберите флакон в целевом положении, потом `Ctrl+A → All Transforms` на
-   каждом объекте.
-5. Проверьте размер: высота всей сборки ≈ 1.96 м в сцене Blender.
-6. Экспорт: `File → Export → glTF 2.0`.
-   * Format: **glTF Binary (.glb)**
-   * Include: Selected Objects (если в сцене есть лишнее), Custom Properties off
-   * Transform: `+Y Up`
-   * Data: Materials → Export, Images → Automatic
-   * Compression: **Draco mesh compression** включить, position quantization 14,
-     normal 10, texcoord 12
-7. Положите результат в `public/models/`.
-
-### Куда что класть
-
-| Что | Куда | Зачем |
-| --- | --- | --- |
-| GLB-модели | `public/models/` | `model.glb` в конфиге |
-| Декодер Draco | `public/draco/` | уже лежит, скопирован из `node_modules/three/examples/jsm/libs/draco/gltf/` |
-| Текстуры (если модель тянет их отдельно) | `public/textures/` | пути внутри GLB |
-| HDRI-пробы | `public/hdri/` | `environment.hdr` в конфиге |
-
-Если после обновления three понадобится обновить декодер:
-
-```powershell
-docker run --rm -v frontend_web_node_modules:/nm -v "C:\...\frontend:/app" alpine `
-  sh -c "cp -r /nm/three/examples/jsm/libs/draco/gltf/. /app/public/draco/"
-```
-
-Файл `draco_encoder.js` из папки удалён намеренно — для декодирования он не
-нужен, а весит мегабайт.
-
-## Материалы
-
-Прозрачная поверхность в сцене ровно одна — стенка флакона: `transmission: 1`,
-тонкая `thickness`, низкая `roughness`, слабый розоватый `attenuationColor` (это
-шампунь просвечивает сквозь стенку, а не стенка мутная). Молочность принадлежит
-жидкости: у неё `transmission: 0` — и это не упрощение, а требование движка,
-проход прозрачности рисует только непрозрачные объекты, поэтому даже чуть
-прозрачная жидкость исчезла бы за стенкой.
-
-Карта неровностей почти белая намеренно: roughness-карта **умножает** значение
-материала, и серая карта вдвое уменьшила бы заданную шероховатость. Карта
-варьирует, а не задаёт.
-
-На узких экранах `transmissionResolutionScale` = 0.5: то, что преломляет
-стекло, — это второй проход рендера, и половина разрешения вдвое дешевле.
-
-## Шапка лендинга
-
-Пока секция находится под липкой шапкой страницы, секция вешает на `.lp-nav`
-атрибут `data-over-dark`, и шапка переходит в тёмный вариант — стекло светлой
-темы над чёрной студией выглядит серой полосой поперёк кадра. Стили лежат в
-`app/product.css`, а не в `landing.css`: состояние заимствованное, и снимается
-вместе с размонтированием секции.
-
-## Свет
-
-По умолчанию HDRI-файла нет вообще. Студия собрана из `<Lightformer>` внутри
-`<Environment frames={1}>`: большой софтбокс слева, заполняющий справа,
-контровой сзади, верхний и две узкие полосы спереди — те самые вертикальные
-блики, по которым глаз понимает, что флакон круглый. Запекается один раз.
-
-Чтобы поставить измеренную пробу, положите `.hdr` в `public/hdri/` и укажите
-его в `environment.hdr` — софтбоксы отключатся сами.
-
-Источники, которые *меняются* по прокрутке (контровой на 70–82%, розовый
-акцент на 74–90%), — обычные `directionalLight`/`spotLight`, и ими управляет
-риг. Поэтому во всей секции ровно один `useFrame`.
-
-## Производительность
-
-* Один `useFrame` на всю секцию. Прогресс — мутируемое поле, а не состояние
-  React: значение, которое меняется каждый кадр, не должно вызывать рендер.
-* Одна прозрачная поверхность — корпус. Жидкость, вставки и трубка
-  непрозрачны, поэтому попадают в проход прозрачности и видны сквозь стекло.
-* Корпус — односторонняя оболочка. Смоделированная вторая стенка выглядит
-  хуже: каждая прозрачная поверхность добавляет свой блик, и флакон становится
-  молочным.
-* `dpr` [1, 1.8] на десктопе и [1, 1.25] на узких экранах, `PerformanceMonitor`
-  и `AdaptiveDpr`, вдвое меньше сегментов лате и текстуры вдвое меньше на
-  телефонах, тени с направленного источника выключены там же.
-* При `prefers-reduced-motion` цикл рендера переводится в `demand`: кадр
-  рисуется на изменение и больше не крутится вхолостую.
-
-## Фолбэки
-
-| Условие | Что происходит |
-| --- | --- |
-| `prefers-reduced-motion: reduce` | пина нет, сборки нет, секция высотой в один экран, собранный флакон и весь текст сразу, плавное появление |
-| Нет WebGL | канвас не создаётся вообще, показывается `public/brand/product-hero.webp` и тот же текст |
-| GLB не загрузился | warn в консоль, процедурный флакон |
-| Нет 2D-контекста для текстур | этикетка и знак пропускаются, флакон остаётся |
-
-## Снимки
-
-`shots-product.mjs` открывает лендинг и прокручивает секцию в 0, 10, 20, 30,
-35, 45, 55, 65, 85 и 100 процентов на 1440×900 и 390×844 и в кадрировочный
-поднабор на 1366×768, проверяет кадр после секции и режим уменьшенного
-движения, собирает ошибки страницы. Постер для фолбэка снимается тем же
-скриптом с `POSTER=...` (webp через CDP: Playwright умеет только png и jpeg).
-
-Ждёт скрипт не по таймеру, а по нарисованному значению — читает `scaleX` полосы
-прогресса внизу секции. Софтверный WebGL в контейнере рисует кадр за секунды, а
-GSAP при таких кадрах включает lag smoothing и продвигает свои часы на 33 мс за
-кадр, так что скраб, который на настоящей видеокарте занимает 0.8 с, здесь
-занимает минуту.
+`?still=cream|tint|shampoo|mascara|pencil|lineup` renders one authored frame
+with the page chrome hidden (`?copy=1` keeps the closing copy, for the
+OpenGraph image). `scripts/stills.mjs` at the repository root drives this
+through headless Chrome and writes the files under `public/brand`.
