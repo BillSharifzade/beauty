@@ -1,0 +1,406 @@
+/*
+ * The pinned product segment.
+ *
+ * The one part of the landing page that is dark in both themes, and it is dark
+ * on purpose: a studio is a black room with lights in it, and a transparent
+ * bottle has nothing to refract on a white page. It reads as a full-bleed band
+ * either way — in dark mode it continues the page, in light mode it is the
+ * deliberate cut a product film makes.
+ *
+ * Every colour here is a literal rather than a token, because the section does
+ * not change with the theme and a token would eventually hand it a light grey.
+ */
+
+/* ---- The page's bar, while this section is under it ----------------------
+ * Every rule here lives in this file rather than in landing.css, because the
+ * bar's own stylesheet belongs to the landing page and this is a borrowed
+ * state: the section adds data-over-dark while it is the thing being covered,
+ * and takes it off when it unmounts. The html prefix wins over landing.css
+ * whatever the import order.
+ *
+ * The colours are literals for the same reason the section's are: the studio
+ * is black in both themes, so the bar over it has one correct treatment. */
+html .lp-nav {
+  transition:
+    background var(--normal) var(--ease),
+    border-color var(--normal) var(--ease),
+    box-shadow var(--normal) var(--ease),
+    color var(--normal) var(--ease);
+}
+
+html .lp-nav[data-over-dark] {
+  background: rgba(12, 12, 14, 0.62);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #f4f4f6;
+}
+
+/* The wordmark and the sub-line name their own colours from the theme's ink,
+ * which is near-black in the light theme and therefore invisible here. */
+html .lp-nav[data-over-dark] .wordmark {
+  color: #f7f7f9;
+}
+
+html .lp-nav[data-over-dark] .lp-brand-sub {
+  color: rgba(244, 244, 246, 0.5);
+}
+
+html .lp-nav[data-over-dark] .lp-nav-links > a:not(.lp-btn) {
+  color: rgba(244, 244, 246, 0.62);
+}
+
+html .lp-nav[data-over-dark] .lp-nav-links > a:not(.lp-btn):hover,
+html .lp-nav[data-over-dark] .lp-nav-links > a[aria-current="true"] {
+  color: #f7f7f9;
+}
+
+html .lp-nav[data-over-dark] .lp-btn--primary {
+  background: #f400a1;
+  color: #ffffff;
+}
+
+html .lp-nav[data-over-dark] .lp-btn--primary:hover {
+  background: #ff2bb2;
+}
+
+html .lp-nav[data-over-dark] .lp-btn--ghost {
+  color: #f4f4f6;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+html .lp-nav[data-over-dark] .theme-toggle {
+  background: transparent;
+  color: rgba(244, 244, 246, 0.7);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+html .lp-nav[data-over-dark] .theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #f7f7f9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html .lp-nav {
+    transition: none;
+  }
+}
+
+.pr {
+  position: relative;
+  z-index: 0;
+  /* Keeps the pinned, position:fixed child under the sticky nav. */
+  isolation: isolate;
+  min-height: 100vh;
+}
+
+/* Held while the scene's chunk is still on the wire, so nothing below jumps. */
+.pr-placeholder {
+  min-height: 100vh;
+  background: #08080a;
+}
+
+.pr-pin {
+  position: relative;
+  height: 100vh;
+  min-height: 30rem;
+  overflow: hidden;
+  color: #f4f4f6;
+  background:
+    radial-gradient(52% 40% at 50% 46%, rgba(244, 0, 161, 0.12) 0%, transparent 66%),
+    radial-gradient(80% 68% at 50% 50%, #141414 0%, #050505 78%);
+}
+
+/* Studio falloff at the top and bottom edges. Reads as the room, not as a
+ * transition to the page above. */
+.pr-pin::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 16%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0%, transparent 18%);
+}
+
+.pr-canvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease);
+}
+
+.pr-canvas--in {
+  opacity: 1;
+}
+
+.pr-canvas canvas {
+  display: block;
+  touch-action: pan-y;
+}
+
+.pr-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+/* The haze: one very faint pool of light behind the product, drifting slowly
+ * enough that it is felt rather than seen. Composited, so it costs nothing. */
+.pr-haze {
+  position: absolute;
+  inset: -8%;
+  pointer-events: none;
+  background: radial-gradient(34% 28% at 50% 50%, rgba(255, 255, 255, 0.07) 0%, transparent 72%);
+  will-change: transform;
+  animation: pr-haze 24s ease-in-out infinite alternate;
+}
+
+@keyframes pr-haze {
+  from {
+    transform: scale(1) translate3d(-1%, 0, 0);
+  }
+  to {
+    transform: scale(1.12) translate3d(2%, -1.5%, 0);
+  }
+}
+
+/* ---- Shared inset: the copy lines up with the rest of the page ----------- */
+.pr-stages,
+.pr-hero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding-inline: max(var(--lp-gutter), calc((100% - var(--lp-max)) / 2 + var(--lp-gutter)));
+}
+
+/* ---- Stage captions ------------------------------------------------------ */
+.pr-stages {
+  bottom: clamp(4.5rem, 13vh, 9rem);
+  display: grid;
+  grid-template-areas: "stage";
+  pointer-events: none;
+}
+
+/* The captions stop where the product starts. DESIGNED AS ONE set in one line
+ * at display size reaches the middle of a 1440-wide screen, which is exactly
+ * where the bottle is, and a caption running across the subject is the one
+ * thing a product film never does. It wraps instead. */
+.pr-stage {
+  grid-area: stage;
+  max-width: min(30%, 22rem);
+  opacity: 0;
+  visibility: hidden;
+  will-change: opacity, transform, filter;
+}
+
+.pr-stage-word {
+  display: block;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: var(--weight-light);
+  font-size: clamp(1.5rem, 0.9rem + 1.7vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: rgba(247, 247, 249, 0.92);
+}
+
+.pr-stage-gloss {
+  display: block;
+  margin-top: 0.7rem;
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  color: rgba(244, 244, 246, 0.44);
+}
+
+/* ---- The close ----------------------------------------------------------- */
+.pr-hero {
+  bottom: clamp(3rem, 9vh, 6rem);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  will-change: opacity, transform, filter;
+}
+
+.pr-eyebrow {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.46);
+  margin-bottom: var(--space-4);
+}
+
+.pr-hero-title {
+  max-width: 22rem;
+  font-size: clamp(1.6rem, 1rem + 2.3vw, 2.7rem);
+  font-weight: var(--weight-semibold);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: #f7f7f9;
+  text-wrap: balance;
+}
+
+.pr-hero-accent {
+  color: #ff7fd0;
+}
+
+.pr-hero-lede {
+  max-width: 25rem;
+  margin-top: var(--space-4);
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: rgba(244, 244, 246, 0.6);
+  text-wrap: pretty;
+}
+
+.pr-hero .lp-btn {
+  margin-top: var(--space-6);
+}
+
+/* The landing's buttons resolve their pink against the page's theme; this
+ * section is always dark, so it states its own. */
+.pr .lp-btn--primary {
+  background: #f400a1;
+  color: #ffffff;
+}
+
+.pr .lp-btn--primary:hover {
+  background: #ff2bb2;
+}
+
+/* ---- Scroll progress and the loader -------------------------------------- */
+.pr-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.pr-bar-fill {
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, #f400a1, #ff7fd0);
+}
+
+.pr-loader {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  transition:
+    opacity 0.5s var(--ease),
+    visibility 0.5s;
+}
+
+.pr-loader--gone {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.pr-loader-track {
+  width: min(15rem, 44vw);
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.pr-loader-line {
+  height: 100%;
+  background: #f400a1;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.pr-loader-text {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.44);
+}
+
+.pr-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1.6rem;
+  text-align: center;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+/* ---- Small screens -------------------------------------------------------
+ * The product rides up at the end on a phone instead of moving right, so the
+ * copy owns the bottom of the screen rather than sharing a column with it. */
+@media (max-width: 640px) {
+  .pr-stages {
+    bottom: clamp(5rem, 16vh, 8rem);
+  }
+
+  .pr-stage {
+    max-width: none;
+  }
+
+  .pr-stage-gloss {
+    font-size: var(--text-xs);
+  }
+
+  .pr-hero-title,
+  .pr-hero-lede {
+    max-width: none;
+  }
+
+  .pr-hero-lede {
+    font-size: var(--text-base);
+  }
+}
+
+/* Landscape phones: one screen is 390px tall and the bottle needs most of it. */
+@media (max-height: 520px) {
+  .pr-hero-lede,
+  .pr-stage-gloss,
+  .pr-hint {
+    display: none;
+  }
+
+  .pr-hero {
+    bottom: 1.5rem;
+  }
+
+  .pr-stages {
+    bottom: 3.5rem;
+  }
+
+  .pr-hero-title {
+    font-size: 1.35rem;
+  }
+}
+
+/* ---- Reduced motion ------------------------------------------------------
+ * No pin and no assembly: the section is one screen showing the finished
+ * product with every word already on it. The canvas still cross-fades in,
+ * which is a change of opacity rather than movement, and the alternative is a
+ * black rectangle that becomes a bottle between two frames. */
+@media (prefers-reduced-motion: reduce) {
+  .pr-haze {
+    animation: none;
+  }
+
+  .pr-canvas {
+    transition-duration: 0.9s !important;
+  }
+}

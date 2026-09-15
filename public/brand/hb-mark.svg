@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Hayat Beauty">
+  <rect width="64" height="64" rx="18" fill="#f400a1"/>
+  <circle cx="32" cy="32" r="24.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-dasharray="40 11.3" transform="rotate(-100 32 32)"/>
+  <path d="M20 23v18M20 32h11M31 23v18M38 23v18M38 23h6a4 4 0 0 1 0 8h-6M38 31h7a4.6 4.6 0 0 1 0 9.2h-7" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
